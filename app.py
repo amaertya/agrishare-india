@@ -610,6 +610,46 @@ INDEX_HTML = """<!DOCTYPE html>
                 </section>
             `;
         }
+        <!-- FAQ Section -->
+                <section class="py-16 bg-slate-50 border-t border-slate-200">
+                    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                        <span class="text-xs font-bold text-agri-700 uppercase tracking-widest bg-agri-50 px-3 py-1 rounded-md border border-agri-200">FAQ</span>
+                        <h2 class="text-3xl font-extrabold text-agri-900 mt-2 mb-10">Frequently Asked Questions</h2>
+                        
+                        <div class="space-y-4 text-left">
+                            <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                                <button onclick="toggleFaq(this)" class="w-full px-6 py-4 flex justify-between items-center font-bold text-slate-900 text-sm hover:bg-slate-50 transition">
+                                    <span>How can small farmers share expensive equipment instead of owning it?</span>
+                                    <i class="fa-solid fa-chevron-down text-slate-400 transition-transform"></i>
+                                </button>
+                                <div class="faq-content hidden px-6 pb-4 text-xs text-slate-600 leading-relaxed">
+                                    Small farmers can rent high-value machinery like tractors, rotavators, and harvesters on an hourly or daily basis through AgriShare India, eliminating the heavy financial burden of purchasing and maintaining equipment outright.
+                                </div>
+                            </div>
+
+                            <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                                <button onclick="toggleFaq(this)" class="w-full px-6 py-4 flex justify-between items-center font-bold text-slate-900 text-sm hover:bg-slate-50 transition">
+                                    <span>How does AgriShare India work?</span>
+                                    <i class="fa-solid fa-chevron-down text-slate-400 transition-transform"></i>
+                                </button>
+                                <div class="faq-content hidden px-6 pb-4 text-xs text-slate-600 leading-relaxed">
+                                    Farmers browse available equipment, select dates, and send booking requests. Owners review and accept requests, allowing both parties to coordinate secure rentals and complete transactions smoothly.
+                                </div>
+                            </div>
+
+                            <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                                <button onclick="toggleFaq(this)" class="w-full px-6 py-4 flex justify-between items-center font-bold text-slate-900 text-sm hover:bg-slate-50 transition">
+                                    <span>Can equipment owners earn from unused machinery?</span>
+                                    <i class="fa-solid fa-chevron-down text-slate-400 transition-transform"></i>
+                                </button>
+                                <div class="faq-content hidden px-6 pb-4 text-xs text-slate-600 leading-relaxed">
+                                    Yes! Equipment owners can list their idle tractors and implements, set their own pricing rates and calendar availability, and earn steady supplementary income from bookings.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
 
         function renderMarketplace() {
             return `
