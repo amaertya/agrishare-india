@@ -1110,7 +1110,6 @@ INDEX_HTML = """<!DOCTYPE html>
         }
         function renderHome() {
             return `
-                <!-- HERO SECTION -->
                 <section class="hero-bg text-white py-20 px-4 sm:px-6 lg:px-8">
                     <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
                         <div class="lg:col-span-7">
@@ -1130,12 +1129,6 @@ INDEX_HTML = """<!DOCTYPE html>
                                     <i class="fa-solid fa-tractor mr-2"></i> List Your Equipment
                                 </button>
                             </div>
-                            <div class="flex flex-wrap items-center gap-6 text-sm text-slate-300">
-                                <span class="flex items-center"><i class="fa-solid fa-check text-agri-400 mr-2"></i> Transparent pricing</span>
-                                <span class="flex items-center"><i class="fa-solid fa-check text-agri-400 mr-2"></i> Real availability</span>
-                                <span class="flex items-center"><i class="fa-solid fa-check text-agri-400 mr-2"></i> Farmer & Owner accounts</span>
-                                <span class="flex items-center"><i class="fa-solid fa-check text-agri-400 mr-2"></i> Safe & secure bookings</span>
-                            </div>
                         </div>
                         <div class="lg:col-span-5 flex justify-center">
                             <div class="bg-white/10 backdrop-blur-md p-4 rounded-3xl border border-white/20 shadow-2xl max-w-sm w-full">
@@ -1150,7 +1143,6 @@ INDEX_HTML = """<!DOCTYPE html>
                     </div>
                 </section>
 
-                <!-- HOW IT WORKS SECTION -->
                 <section id="how-it-works" class="py-20 bg-white">
                     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                         <span class="text-xs uppercase tracking-widest font-semibold text-agri-700 bg-agri-50 px-3 py-1 rounded-md inline-block mb-3">HOW IT WORKS</span>
@@ -1158,147 +1150,35 @@ INDEX_HTML = """<!DOCTYPE html>
                         <p class="text-slate-600 max-w-md mx-auto mb-12 text-sm">Finding or renting equipment is quick and easy.</p>
                         
                         <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
-                            <div class="bg-slate-50 p-6 rounded-3xl border border-slate-200 relative">
+                            <div class="bg-slate-50 p-6 rounded-3xl border border-slate-200">
                                 <div class="w-10 h-10 bg-agri-900 text-white rounded-full flex items-center justify-center font-bold text-sm mx-auto mb-4">01</div>
-                                <div class="text-agri-700 text-2xl mb-3"><i class="fa-solid fa-user-plus"></i></div>
                                 <h4 class="font-bold text-slate-900 text-sm mb-1">Create account</h4>
-                                <p class="text-xs text-slate-600">Sign up as a Farmer or Owner.</p>
+                                <p class="text-xs text-slate-600">Sign up as Farmer or Owner.</p>
                             </div>
-                            <div class="bg-slate-50 p-6 rounded-3xl border border-slate-200 relative">
+                            <div class="bg-slate-50 p-6 rounded-3xl border border-slate-200">
                                 <div class="w-10 h-10 bg-agri-900 text-white rounded-full flex items-center justify-center font-bold text-sm mx-auto mb-4">02</div>
-                                <div class="text-agri-700 text-2xl mb-3"><i class="fa-solid fa-magnifying-glass"></i></div>
                                 <h4 class="font-bold text-slate-900 text-sm mb-1">Find equipment</h4>
-                                <p class="text-xs text-slate-600">Browse available machinery near you.</p>
+                                <p class="text-xs text-slate-600">Browse available machinery.</p>
                             </div>
-                            <div class="bg-slate-50 p-6 rounded-3xl border border-slate-200 relative">
+                            <div class="bg-slate-50 p-6 rounded-3xl border border-slate-200">
                                 <div class="w-10 h-10 bg-agri-900 text-white rounded-full flex items-center justify-center font-bold text-sm mx-auto mb-4">03</div>
-                                <div class="text-agri-700 text-2xl mb-3"><i class="fa-solid fa-calendar-days"></i></div>
                                 <h4 class="font-bold text-slate-900 text-sm mb-1">Choose date & time</h4>
-                                <p class="text-xs text-slate-600">Select your rental period and send a request.</p>
+                                <p class="text-xs text-slate-600">Select your rental period.</p>
                             </div>
-                            <div class="bg-slate-50 p-6 rounded-3xl border border-slate-200 relative">
+                            <div class="bg-slate-50 p-6 rounded-3xl border border-slate-200">
                                 <div class="w-10 h-10 bg-agri-900 text-white rounded-full flex items-center justify-center font-bold text-sm mx-auto mb-4">04</div>
-                                <div class="text-agri-700 text-2xl mb-3"><i class="fa-solid fa-handshake"></i></div>
                                 <h4 class="font-bold text-slate-900 text-sm mb-1">Owner responds</h4>
-                                <p class="text-xs text-slate-600">Get confirmation and manage your booking.</p>
+                                <p class="text-xs text-slate-600">Get confirmation instantly.</p>
                             </div>
-                            <div class="bg-slate-50 p-6 rounded-3xl border border-slate-200 relative">
+                            <div class="bg-slate-50 p-6 rounded-3xl border border-slate-200">
                                 <div class="w-10 h-10 bg-agri-900 text-white rounded-full flex items-center justify-center font-bold text-sm mx-auto mb-4">05</div>
-                                <div class="text-agri-700 text-2xl mb-3"><i class="fa-solid fa-circle-check"></i></div>
                                 <h4 class="font-bold text-slate-900 text-sm mb-1">Complete rental</h4>
-                                <p class="text-xs text-slate-600">Pay securely and rate the experience.</p>
+                                <p class="text-xs text-slate-600">Pay securely and review.</p>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                <!-- FOR FARMERS, OWNERS & MARKETPLACE -->
-                <section id="farmers" class="py-16 bg-slate-50">
-                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            <!-- For Farmers -->
-                            <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                                <div>
-                                    <span class="text-[10px] uppercase tracking-widest font-bold text-agri-700 bg-agri-50 px-3 py-1 rounded-md inline-block mb-4">FOR FARMERS</span>
-                                    <h3 class="text-2xl font-extrabold text-agri-900 mb-3">Need a machine for your next farming operation?</h3>
-                                    <p class="text-slate-600 text-sm mb-6">Access a wide range of agricultural machinery without the high cost of ownership. Compare, book and manage everything in one place.</p>
-                                    <ul class="space-y-3 text-sm text-slate-700 mb-8">
-                                        <li class="flex items-center"><i class="fa-solid fa-check text-agri-600 mr-2.5"></i> Find tractors and implements</li>
-                                        <li class="flex items-center"><i class="fa-solid fa-check text-agri-600 mr-2.5"></i> Compare rental prices</li>
-                                        <li class="flex items-center"><i class="fa-solid fa-check text-agri-600 mr-2.5"></i> Check availability and distance</li>
-                                        <li class="flex items-center"><i class="fa-solid fa-check text-agri-600 mr-2.5"></i> Communicate with owners</li>
-                                        <li class="flex items-center"><i class="fa-solid fa-check text-agri-600 mr-2.5"></i> Manage bookings and payments</li>
-                                    </ul>
-                                </div>
-                                <button onclick="router('marketplace')" class="w-full bg-agri-900 hover:bg-agri-950 text-white font-bold py-3.5 rounded-xl transition flex items-center justify-center">
-                                    Explore Equipment <i class="fa-solid fa-arrow-right ml-2"></i>
-                                </button>
-                            </div>
-
-                            <!-- For Owners -->
-                            <div id="owners" class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                                <div>
-                                    <span class="text-[10px] uppercase tracking-widest font-bold text-agri-700 bg-agri-50 px-3 py-1 rounded-md inline-block mb-4">FOR EQUIPMENT OWNERS</span>
-                                    <h3 class="text-2xl font-extrabold text-agri-900 mb-3">Have machinery that isn't being used often?</h3>
-                                    <p class="text-slate-600 text-sm mb-6">List your equipment, set your price and availability, and start earning. Your machinery can work harder and generate income.</p>
-                                    <ul class="space-y-3 text-sm text-slate-700 mb-8">
-                                        <li class="flex items-center"><i class="fa-solid fa-check text-agri-600 mr-2.5"></i> Create equipment listings</li>
-                                        <li class="flex items-center"><i class="fa-solid fa-check text-agri-600 mr-2.5"></i> Set your rental price</li>
-                                        <li class="flex items-center"><i class="fa-solid fa-check text-agri-600 mr-2.5"></i> Control availability</li>
-                                        <li class="flex items-center"><i class="fa-solid fa-check text-agri-600 mr-2.5"></i> Receive booking requests</li>
-                                        <li class="flex items-center"><i class="fa-solid fa-check text-agri-600 mr-2.5"></i> Track earnings and performance</li>
-                                    </ul>
-                                </div>
-                                <button onclick="openModal('signupModal')" class="w-full bg-agri-600 hover:bg-agri-700 text-white font-bold py-3.5 rounded-xl transition flex items-center justify-center">
-                                    List Your Equipment <i class="fa-solid fa-arrow-right ml-2"></i>
-                                </button>
-                            </div>
-
-                            <!-- Marketplace Categories -->
-                            <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                                <div>
-                                    <span class="text-[10px] uppercase tracking-widest font-bold text-agri-700 bg-agri-50 px-3 py-1 rounded-md inline-block mb-4">MARKETPLACE</span>
-                                    <h3 class="text-2xl font-extrabold text-agri-900 mb-3">Browse Our Marketplace</h3>
-                                    <p class="text-slate-600 text-sm mb-6">Find the right equipment for your needs across 12+ categories.</p>
-                                    
-                                    <div class="grid grid-cols-2 gap-3 mb-8">
-                                        <div onclick="router('marketplace', 'Tractors')" class="bg-slate-50 hover:bg-agri-50 p-4 rounded-2xl border border-slate-200 cursor-pointer text-center transition">
-                                            <div class="text-agri-700 text-xl mb-1"><i class="fa-solid fa-tractor"></i></div>
-                                            <span class="text-xs font-bold text-slate-800">Tractors</span>
-                                        </div>
-                                        <div onclick="router('marketplace', 'Rotavators')" class="bg-slate-50 hover:bg-agri-50 p-4 rounded-2xl border border-slate-200 cursor-pointer text-center transition">
-                                            <div class="text-agri-700 text-xl mb-1"><i class="fa-solid fa-seedling"></i></div>
-                                            <span class="text-xs font-bold text-slate-800">Rotavators</span>
-                                        </div>
-                                        <div onclick="router('marketplace', 'Harvesters')" class="bg-slate-50 hover:bg-agri-50 p-4 rounded-2xl border border-slate-200 cursor-pointer text-center transition">
-                                            <div class="text-agri-700 text-xl mb-1"><i class="fa-solid fa-wheat-awn"></i></div>
-                                            <span class="text-xs font-bold text-slate-800">Harvesters</span>
-                                        </div>
-                                        <div onclick="router('marketplace', 'Pumps')" class="bg-slate-50 hover:bg-agri-50 p-4 rounded-2xl border border-slate-200 cursor-pointer text-center transition">
-                                            <div class="text-agri-700 text-xl mb-1"><i class="fa-solid fa-water"></i></div>
-                                            <span class="text-xs font-bold text-slate-800">Pumps</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <button onclick="router('marketplace')" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold py-3.5 rounded-xl transition flex items-center justify-center">
-                                    Browse All Equipment <i class="fa-solid fa-arrow-right ml-2"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- ADVISOR & TRUST & SAFETY SECTION -->
-                <section class="py-12 bg-white">
-                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div class="bg-agri-50 p-8 rounded-3xl border border-agri-100 flex flex-col justify-between">
-                                <div>
-                                    <span class="text-[10px] uppercase tracking-widest font-bold text-agri-700 bg-white px-3 py-1 rounded-md inline-block mb-3">SMART RECOMMENDATIONS</span>
-                                    <h3 class="text-2xl font-extrabold text-agri-900 mb-2">Farm Equipment Advisor</h3>
-                                    <p class="text-slate-600 text-sm mb-6">Get personalized machinery recommendations based on crop, soil and farm size.</p>
-                                </div>
-                                <button onclick="router('advisor')" class="bg-agri-600 hover:bg-agri-700 text-white font-bold px-6 py-3.5 rounded-xl transition flex items-center justify-center w-fit">
-                                    Try Farm Advisor <i class="fa-solid fa-arrow-right ml-2"></i>
-                                </button>
-                            </div>
-                            <div class="bg-slate-50 p-8 rounded-3xl border border-slate-200 flex flex-col justify-between">
-                                <div>
-                                    <span class="text-[10px] uppercase tracking-widest font-bold text-slate-700 bg-white px-3 py-1 rounded-md inline-block mb-3">TRUST & SAFETY</span>
-                                    <h3 class="text-2xl font-extrabold text-agri-900 mb-2">Why Choose AgriShare?</h3>
-                                    <p class="text-slate-600 text-sm mb-6">Verified equipment, secure payment records, and trusted owner profiles.</p>
-                                    <div class="flex items-center space-x-6 text-xs font-bold text-slate-700">
-                                        <span class="flex items-center"><i class="fa-solid fa-shield text-agri-600 mr-1.5"></i> Verified</span>
-                                        <span class="flex items-center"><i class="fa-solid fa-lock text-agri-600 mr-1.5"></i> Secure</span>
-                                        <span class="flex items-center"><i class="fa-solid fa-star text-amber-500 mr-1.5"></i> Rated</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- FAQ SECTION -->
                 <section id="faq" class="py-20 bg-slate-50">
                     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                         <span class="text-xs uppercase tracking-widest font-semibold text-agri-700 bg-agri-50 px-3 py-1 rounded-md inline-block mb-3">FAQ</span>
@@ -1321,15 +1201,6 @@ INDEX_HTML = """<!DOCTYPE html>
                                 </button>
                                 <div id="faq-content-2" class="accordion-content px-6 text-sm text-slate-600 pb-4">
                                     Farmers search and request machinery bookings. Owners accept requests, equipment is delivered or operated, and payments are processed securely online.
-                                </div>
-                            </div>
-                            <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                                <button onclick="toggleAccordion(3)" class="w-full px-6 py-4 font-bold text-slate-900 flex justify-between items-center text-left">
-                                    <span>Can equipment owners earn from unused machinery?</span>
-                                    <i id="faq-icon-3" class="fa-solid fa-chevron-down text-slate-400 transition-transform"></i>
-                                </button>
-                                <div id="faq-content-3" class="accordion-content px-6 text-sm text-slate-600 pb-4">
-                                    Yes! Owners can list their idle tractors and implements on our platform, set their own pricing per hour or per acre, and generate steady secondary income.
                                 </div>
                             </div>
                         </div>
@@ -1467,7 +1338,86 @@ INDEX_HTML = """<!DOCTYPE html>
         }
         function renderAdminDashboard() { return `<div class="max-w-7xl mx-auto px-4 py-8" id="adminContentArea">Admin Panel</div>`; }
         async function loadAdminDashboardData() {}
-        function renderAdvisor() { return `<div class="max-w-4xl mx-auto px-4 py-12 text-center"><h1 class="text-3xl font-bold">Equipment Advisor</h1></div>`; }
+
+        function renderAdvisor() {
+            return `
+                <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                    <div class="text-center mb-8">
+                        <span class="text-xs font-bold text-agri-700 tracking-widest uppercase bg-agri-100 px-3 py-1 rounded-md">SMART RECOMMENDATIONS</span>
+                        <h1 class="text-3xl font-extrabold text-agri-900 mt-2">Farm Equipment Advisor</h1>
+                        <p class="text-sm text-slate-600 mt-1">Get precise equipment recommendations based on your crop, soil and farming operation.</p>
+                    </div>
+
+                    <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm mb-8">
+                        <form onsubmit="handleAdvisorSubmit(event)" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Crop</label>
+                                <select id="advCrop" class="w-full px-3 py-3 rounded-xl border border-slate-300 text-sm bg-white">
+                                    <option value="Paddy">Paddy / Rice</option>
+                                    <option value="Wheat">Wheat</option>
+                                    <option value="Sugarcane">Sugarcane</option>
+                                    <option value="Cotton">Cotton</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Farming Operation</label>
+                                <select id="advOperation" class="w-full px-3 py-3 rounded-xl border border-slate-300 text-sm bg-white">
+                                    <option value="Land Preparation">Land Preparation / Ploughing</option>
+                                    <option value="Harvesting">Harvesting & Threshing</option>
+                                    <option value="Irrigation">Irrigation / Watering</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Farm Size (Acres)</label>
+                                <input type="number" id="advSize" value="5" class="w-full px-3 py-3 rounded-xl border border-slate-300 text-sm">
+                            </div>
+                            <div class="sm:col-span-3">
+                                <button type="submit" class="w-full bg-agri-600 hover:bg-agri-700 text-white font-bold py-3.5 rounded-xl transition shadow-sm">Get Recommendations</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div id="advisorResults" class="space-y-6"></div>
+                </div>
+            `;
+        }
+
+        async function handleAdvisorSubmit(e) {
+            e.preventDefault();
+            const crop = document.getElementById('advCrop').value;
+            const operation = document.getElementById('advOperation').value;
+            const farm_size = document.getElementById('advSize').value;
+
+            const res = await fetch('/api/advisor/recommend', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({crop, operation, farm_size})
+            });
+            const data = await res.json();
+            const resultsDiv = document.getElementById('advisorResults');
+
+            resultsDiv.innerHTML = `
+                <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                    <h3 class="font-bold text-agri-900 text-lg mb-4">Recommended Machinery Categories for ${crop} (${operation})</h3>
+                    <div class="space-y-4 mb-6">
+                        ${data.recommendations.map(rec => `
+                            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div>
+                                    <h4 class="font-bold text-agri-900 text-base flex items-center"><i class="fa-solid fa-tractor mr-2 text-agri-700"></i>${rec.category}</h4>
+                                    <p class="text-xs text-slate-600 mt-1">${rec.reason}</p>
+                                    <span class="inline-block mt-2 text-[11px] bg-agri-100 text-agri-800 font-semibold px-2.5 py-1 rounded-md">Power: ${rec.hp}</span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-sm font-extrabold text-agri-900 block">${rec.range}</span>
+                                    <button onclick="router('marketplace', '${rec.category}')" class="mt-2 bg-agri-600 hover:bg-agri-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition">View ${rec.category}</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
         window.onload = function() { checkAuth(); router('home'); }
     </script>
 </body>
