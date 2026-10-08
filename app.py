@@ -417,6 +417,12 @@ INDEX_HTML = """<!DOCTYPE html>
             updateAuthNav();
             router('home');
         }
+        function toggleFaq(button) {
+            const content = button.nextElementSibling;
+            const icon = button.querySelector('i');
+            content.classList.toggle('hidden');
+            icon.classList.toggle('rotate-180');
+        }
         function scrollToSection(id) {
             const el = document.getElementById(id);
             if(el) el.scrollIntoView({behavior: 'smooth'});
@@ -608,9 +614,8 @@ INDEX_HTML = """<!DOCTYPE html>
                         </div>
                     </div>
                 </section>
-            `;
-        }
-        <!-- FAQ Section -->
+
+                <!-- FAQ Section -->
                 <section class="py-16 bg-slate-50 border-t border-slate-200">
                     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                         <span class="text-xs font-bold text-agri-700 uppercase tracking-widest bg-agri-50 px-3 py-1 rounded-md border border-agri-200">FAQ</span>
@@ -649,7 +654,8 @@ INDEX_HTML = """<!DOCTYPE html>
                         </div>
                     </div>
                 </section>
-                
+            `;
+        }
 
         function renderMarketplace() {
             return `
