@@ -464,7 +464,7 @@ INDEX_HTML = """<!DOCTYPE html>
                     </div>
                 </section>
 
-                <!-- Top Feature Cards matching screenshot -->
+                <!-- Top Feature Cards -->
                 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
                         <div class="bg-agri-50/60 p-8 rounded-3xl border border-agri-100 shadow-sm flex items-center justify-between">
@@ -498,7 +498,7 @@ INDEX_HTML = """<!DOCTYPE html>
                         </div>
                     </div>
 
-                    <!-- 3 Column Cards matching screenshot -->
+                    <!-- 3 Column Cards -->
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
                         <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
                             <div>
@@ -567,7 +567,7 @@ INDEX_HTML = """<!DOCTYPE html>
                     </div>
                 </section>
 
-                <!-- 5 Step How It Works matching screenshot -->
+                <!-- 5 Step How It Works Section -->
                 <section id="how-it-works" class="py-16 bg-white border-t border-slate-200">
                     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                         <span class="text-xs font-bold text-agri-700 uppercase tracking-widest bg-agri-50 px-3 py-1 rounded-md">HOW IT WORKS</span>
