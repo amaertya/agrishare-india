@@ -6,8 +6,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'agrishare-india-secret-key-2026'
+
+# Ensure database and templates directories exist
 db_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'database', 'agrishare.db')
 os.makedirs(os.path.dirname(db_path), exist_ok=True)
+os.makedirs(os.path.join(os.path.dirname(__file__), 'templates'), exist_ok=True)
+
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -205,7 +209,6 @@ def seed_database():
     db.drop_all()
     db.create_all()
 
-    # Create users
     u_admin = User(name='Admin Officer', email='admin@demo.local', phone='9876543210', password_hash=generate_password_hash('admin123'), role='admin', state='Karnataka', district='Bengaluru', village='Hebbal', city='Bengaluru', pincode='560024', is_verified=True)
     u_farmer1 = User(name='Ramesh Gowda', email='farmer@demo.local', phone='9876543211', password_hash=generate_password_hash('farmer123'), role='farmer', state='Karnataka', district='Mandya', village='Srirangapatna', city='Mandya', pincode='571438', is_verified=True)
     u_owner1 = User(name='Suresh Reddy', email='owner@demo.local', phone='9876543212', password_hash=generate_password_hash('owner123'), role='owner', state='Karnataka', district='Bengaluru Rural', village='Devanahalli', city='Bengaluru', pincode='562110', is_verified=True)
@@ -216,14 +219,12 @@ def seed_database():
     db.session.add_all([u_admin, u_farmer1, u_owner1, u_farmer2, u_owner2])
     db.session.commit()
 
-    # Profiles
     db.session.add(FarmerProfile(user_id=u_farmer1.id, farm_size=6.5, soil_type='Clay Loam', primary_crops='Paddy, Sugarcane', preferred_language='Kannada'))
     db.session.add(FarmerProfile(user_id=u_farmer2.id, farm_size=12.0, soil_type='Alluvial', primary_crops='Wheat, Paddy', preferred_language='Punjabi'))
     db.session.add(OwnerProfile(user_id=u_owner1.id, business_name='Reddy Agro Machineries', experience=7, verification_status='Verified'))
     db.session.add(OwnerProfile(user_id=u_owner2.id, business_name='Singh Harvester Hub', experience=10, verification_status='Verified'))
     db.session.commit()
 
-    # Equipment
     eq1 = Equipment(
         owner_id=u_owner1.id, name='Mahindra 575 DI Tractor', category='Tractors', brand='Mahindra', model='575 DI', year=2023, horsepower=45,
         condition='Excellent', fuel_type='Diesel', description='Reliable 45HP tractor equipped with heavy-duty dual clutch, ideal for ploughing, puddling and heavy hauling.',
@@ -258,7 +259,6 @@ def seed_database():
     db.session.add_all([eq1, eq2, eq3, eq4, eq5])
     db.session.commit()
 
-    # Images
     db.session.add(EquipmentImage(equipment_id=eq1.id, image_path='https://images.unsplash.com/photo-1592982537447-7440770cbfc9?auto=format&fit=crop&q=80&w=800'))
     db.session.add(EquipmentImage(equipment_id=eq2.id, image_path='https://images.unsplash.com/photo-1563514227147-6d2ff665a6a0?auto=format&fit=crop&q=80&w=800'))
     db.session.add(EquipmentImage(equipment_id=eq3.id, image_path='https://images.unsplash.com/photo-1599940824399-b87987ceb72a?auto=format&fit=crop&q=80&w=800'))
@@ -266,7 +266,6 @@ def seed_database():
     db.session.add(EquipmentImage(equipment_id=eq5.id, image_path='https://images.unsplash.com/photo-1589923188900-85dae523342b?auto=format&fit=crop&q=80&w=800'))
     db.session.commit()
 
-    # Sample Bookings
     b1 = Booking(
         equipment_id=eq1.id, farmer_id=u_farmer1.id, owner_id=u_owner1.id,
         start_datetime='2026-10-15 08:00', end_datetime='2026-10-15 18:00',
@@ -277,11 +276,9 @@ def seed_database():
     db.session.add(b1)
     db.session.commit()
 
-    # Payment for b1
     p1 = Payment(booking_id=b1.id, amount=4100.0, status='Completed', transaction_id='TXNIN8394209')
     db.session.add(p1)
 
-    # Notifications
     n1 = Notification(user_id=u_farmer1.id, type='Booking', title='Booking Confirmed', message='Your booking for Mahindra 575 DI Tractor has been confirmed.')
     n2 = Notification(user_id=u_owner1.id, type='Booking', title='New Booking Request', message='Ramesh Gowda requested your Mahindra 575 DI Tractor for Oct 15.')
     db.session.add_all([n1, n2])
@@ -499,11 +496,10 @@ def api_create_booking():
     equipment_id = data.get('equipment_id')
     eq = Equipment.query.get_or_404(equipment_id)
 
-    start_str = data.get('start_datetime') # '2026-10-15 08:00'
-    end_str = data.get('end_datetime')     # '2026-10-15 18:00'
+    start_str = data.get('start_datetime')
+    end_str = data.get('end_datetime')
     land_area = float(data.get('land_area', 2.0))
 
-    # CRITICAL SERVER-SIDE CONFLICT CHECK
     overlapping = Booking.query.filter(
         Booking.equipment_id == equipment_id,
         Booking.status.in_(['CONFIRMED', 'ACTIVE', 'ACCEPTED', 'PENDING_OWNER']),
@@ -514,14 +510,13 @@ def api_create_booking():
     if overlapping:
         return jsonify({'error': 'This equipment is already booked or requested for the selected period.'}), 400
 
-    # Calculate price
     unit_type = data.get('unit_type', 'hourly')
     if unit_type == 'daily':
-        amount = eq.daily_rate * 1.0 # 1 day
+        amount = eq.daily_rate * 1.0
     elif unit_type == 'acre':
         amount = eq.acre_rate * land_area
     else:
-        amount = eq.hourly_rate * 8.0 # default 8 hr shift
+        amount = eq.hourly_rate * 8.0
 
     if data.get('delivery_required'):
         amount += eq.delivery_charge
@@ -544,7 +539,6 @@ def api_create_booking():
     db.session.add(booking)
     db.session.commit()
 
-    # Notify Owner
     db.session.add(Notification(
         user_id=eq.owner_id, type='Booking',
         title='New Booking Request',
@@ -729,7 +723,7 @@ def api_messages():
         return jsonify(result)
     elif request.method == 'POST':
         data = request.json
-        receiver_id = data.get('receiver_id', 2) # default owner
+        receiver_id = data.get('receiver_id', 2)
         msg = Message(sender_id=user_id, receiver_id=receiver_id, message=data.get('message'))
         db.session.add(msg)
         db.session.commit()
@@ -827,7 +821,6 @@ INDEX_HTML = """<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AgriShare India — Agricultural Equipment Sharing Marketplace</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -848,7 +841,6 @@ INDEX_HTML = """<!DOCTYPE html>
             }
         }
     </script>
-    <!-- Inter Font & Lucide Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -863,7 +855,6 @@ INDEX_HTML = """<!DOCTYPE html>
 </head>
 <body class="bg-slate-50 min-h-screen flex flex-col">
 
-    <!-- Top Navigation -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
             <div class="flex items-center space-x-3 cursor-pointer" onclick="router('home')">
@@ -876,7 +867,6 @@ INDEX_HTML = """<!DOCTYPE html>
                 </div>
             </div>
 
-            <!-- Desktop Nav -->
             <nav class="hidden md:flex items-center space-x-8 text-sm font-medium text-slate-700">
                 <a href="#home" onclick="router('home')" class="hover:text-agri-800 transition">Home</a>
                 <a href="#how-it-works" onclick="router('home'); scrollToSection('how-it-works')" class="hover:text-agri-800 transition">How it works</a>
@@ -885,7 +875,6 @@ INDEX_HTML = """<!DOCTYPE html>
                 <a href="#faq" onclick="router('home'); scrollToSection('faq')" class="hover:text-agri-800 transition">FAQ</a>
             </nav>
 
-            <!-- Right Auth / User Menu -->
             <div class="flex items-center space-x-3" id="auth-nav-container">
                 <button onclick="openModal('loginModal')" class="px-4 py-2 text-sm font-semibold text-agri-900 hover:text-agri-700 transition">
                     <i class="fa-regular fa-user mr-1.5"></i> Login
@@ -897,12 +886,9 @@ INDEX_HTML = """<!DOCTYPE html>
         </div>
     </header>
 
-    <!-- Main View Container -->
     <main id="app-container" class="flex-grow">
-        <!-- Dynamically rendered views will appear here -->
     </main>
 
-    <!-- Footer -->
     <footer class="bg-agri-950 text-slate-300 py-12 border-t border-slate-800 mt-auto">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
@@ -914,15 +900,12 @@ INDEX_HTML = """<!DOCTYPE html>
                         <span class="text-lg font-bold text-white">AgriShare India</span>
                     </div>
                     <p class="text-sm text-slate-400 mb-4">Connecting Indian farmers with equipment owners to make machinery discovery, booking and management simple and accessible.</p>
-                    <p class="text-xs text-slate-500">"Share machines. Grow more."</p>
                 </div>
                 <div>
                     <h4 class="text-white font-semibold mb-4 text-sm uppercase tracking-wider">Quick Links</h4>
                     <ul class="space-y-2 text-sm">
                         <li><a href="#" onclick="router('marketplace')" class="hover:text-white transition">Browse Marketplace</a></li>
                         <li><a href="#" onclick="router('advisor')" class="hover:text-white transition">Farm Equipment Advisor</a></li>
-                        <li><a href="#" onclick="openModal('loginModal')" class="hover:text-white transition">Farmer Login</a></li>
-                        <li><a href="#" onclick="openModal('loginModal')" class="hover:text-white transition">Owner Portal</a></li>
                     </ul>
                 </div>
                 <div>
@@ -930,8 +913,6 @@ INDEX_HTML = """<!DOCTYPE html>
                     <ul class="space-y-2 text-sm">
                         <li><a href="#" class="hover:text-white transition">Privacy Policy</a></li>
                         <li><a href="#" class="hover:text-white transition">Terms of Service</a></li>
-                        <li><a href="#" class="hover:text-white transition">Cancellation Policy</a></li>
-                        <li><a href="#" class="hover:text-white transition">Safety Guidelines</a></li>
                     </ul>
                 </div>
                 <div>
@@ -941,55 +922,34 @@ INDEX_HTML = """<!DOCTYPE html>
                     <p class="text-xs text-slate-400">Admin: admin@demo.local / admin123</p>
                 </div>
             </div>
-            <div class="border-t border-slate-800 pt-6 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500">
-                <p>&copy; 2026 AgriShare India. Agricultural Equipment Sharing Marketplace. All rights reserved.</p>
-                <p class="mt-2 md:mt-0">AgriShare India is a marketplace connecting farmers and equipment owners.</p>
+            <div class="border-t border-slate-800 pt-6 text-xs text-slate-500">
+                <p>&copy; 2026 AgriShare India. All rights reserved.</p>
             </div>
         </div>
     </footer>
 
-    <!-- Modals -->
-    <!-- Login Modal -->
     <div id="loginModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
             <button onclick="closeModal('loginModal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             <h3 class="text-2xl font-bold text-agri-900 mb-1">Welcome Back</h3>
-            <p class="text-sm text-slate-500 mb-6">Login to your AgriShare India account</p>
             <form onsubmit="handleLogin(event)" class="space-y-4">
                 <div>
                     <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Email Address</label>
-                    <input type="email" id="loginEmail" required class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-agri-600 focus:outline-none text-sm" placeholder="farmer@demo.local">
+                    <input type="email" id="loginEmail" required class="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm" placeholder="farmer@demo.local">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Password</label>
-                    <input type="password" id="loginPassword" required class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-agri-600 focus:outline-none text-sm" placeholder="••••••••">
+                    <input type="password" id="loginPassword" required class="w-full px-4 py-3 rounded-xl border border-slate-300 text-sm" placeholder="••••••••">
                 </div>
-                <button type="submit" class="w-full bg-agri-600 hover:bg-agri-700 text-white font-semibold py-3 rounded-xl transition shadow-sm">Login Securely</button>
+                <button type="submit" class="w-full bg-agri-600 hover:bg-agri-700 text-white font-semibold py-3 rounded-xl transition">Login Securely</button>
             </form>
-            <div class="mt-4 text-center text-xs text-slate-500">
-                Don't have an account? <button onclick="closeModal('loginModal'); openModal('signupModal');" class="text-agri-700 font-semibold hover:underline">Sign up</button>
-            </div>
         </div>
     </div>
 
-    <!-- Signup Role Selection Modal -->
     <div id="signupModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
             <button onclick="closeModal('signupModal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             <h3 class="text-2xl font-bold text-agri-900 mb-1">Join AgriShare India</h3>
-            <p class="text-sm text-slate-500 mb-6">Select your account type to get started</p>
-            <div class="grid grid-cols-2 gap-4 mb-6">
-                <div onclick="selectSignupRole('farmer')" id="roleFarmerCard" class="border-2 border-agri-600 bg-agri-50 p-5 rounded-2xl cursor-pointer text-center transition">
-                    <i class="fa-solid fa-seedling text-3xl text-agri-700 mb-3"></i>
-                    <h4 class="font-bold text-agri-900">I'm a Farmer</h4>
-                    <p class="text-xs text-slate-600 mt-1">Need agricultural equipment on rent</p>
-                </div>
-                <div onclick="selectSignupRole('owner')" id="roleOwnerCard" class="border-2 border-slate-200 hover:border-agri-600 p-5 rounded-2xl cursor-pointer text-center transition">
-                    <i class="fa-solid fa-tractor text-3xl text-slate-600 mb-3"></i>
-                    <h4 class="font-bold text-slate-900">Equipment Owner</h4>
-                    <p class="text-xs text-slate-600 mt-1">Want to rent out machinery & earn</p>
-                </div>
-            </div>
             <form onsubmit="handleSignup(event)" class="space-y-3">
                 <input type="hidden" id="signupRole" value="farmer">
                 <div class="grid grid-cols-2 gap-3">
@@ -1012,19 +972,17 @@ INDEX_HTML = """<!DOCTYPE html>
                         <input type="password" id="signupPassword" required class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm" placeholder="••••••••">
                     </div>
                     <div>
-                        <label class="block text-[11px] font-semibold text-slate-700 uppercase mb-1">District / Location</label>
+                        <label class="block text-[11px] font-semibold text-slate-700 uppercase mb-1">District</label>
                         <input type="text" id="signupDistrict" required class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm" placeholder="Mandya, KA">
                     </div>
                 </div>
-                <button type="submit" class="w-full bg-agri-600 hover:bg-agri-700 text-white font-semibold py-3 rounded-xl transition shadow-sm mt-2">Create Account</button>
+                <button type="submit" class="w-full bg-agri-600 hover:bg-agri-700 text-white font-semibold py-3 rounded-xl transition mt-2">Create Account</button>
             </form>
         </div>
     </div>
 
-    <!-- JavaScript Application Logic -->
     <script>
         let currentUser = null;
-
         async function checkAuth() {
             try {
                 const res = await fetch('/api/auth/me');
@@ -1033,7 +991,6 @@ INDEX_HTML = """<!DOCTYPE html>
                 updateAuthNav();
             } catch (e) { console.error(e); }
         }
-
         function updateAuthNav() {
             const container = document.getElementById('auth-nav-container');
             if (currentUser) {
@@ -1058,21 +1015,8 @@ INDEX_HTML = """<!DOCTYPE html>
                 `;
             }
         }
-
         function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
         function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-
-        function selectSignupRole(role) {
-            document.getElementById('signupRole').value = role;
-            if(role === 'farmer') {
-                document.getElementById('roleFarmerCard').className = "border-2 border-agri-600 bg-agri-50 p-5 rounded-2xl cursor-pointer text-center transition";
-                document.getElementById('roleOwnerCard').className = "border-2 border-slate-200 hover:border-agri-600 p-5 rounded-2xl cursor-pointer text-center transition";
-            } else {
-                document.getElementById('roleOwnerCard').className = "border-2 border-agri-600 bg-agri-50 p-5 rounded-2xl cursor-pointer text-center transition";
-                document.getElementById('roleFarmerCard').className = "border-2 border-slate-200 hover:border-agri-600 p-5 rounded-2xl cursor-pointer text-center transition";
-            }
-        }
-
         async function handleLogin(e) {
             e.preventDefault();
             const email = document.getElementById('loginEmail').value;
@@ -1090,11 +1034,8 @@ INDEX_HTML = """<!DOCTYPE html>
                 if(currentUser.role === 'farmer') router('farmer-dashboard');
                 else if(currentUser.role === 'owner') router('owner-dashboard');
                 else router('admin-dashboard');
-            } else {
-                alert(data.error || 'Login failed');
-            }
+            } else { alert(data.error || 'Login failed'); }
         }
-
         async function handleSignup(e) {
             e.preventDefault();
             const payload = {
@@ -1118,24 +1059,18 @@ INDEX_HTML = """<!DOCTYPE html>
                 updateAuthNav();
                 if(currentUser.role === 'farmer') router('farmer-dashboard');
                 else router('owner-dashboard');
-            } else {
-                alert(data.error || 'Signup failed');
-            }
+            } else { alert(data.error || 'Signup failed'); }
         }
-
         async function logout() {
             await fetch('/api/auth/logout', {method: 'POST'});
             currentUser = null;
             updateAuthNav();
             router('home');
         }
-
         function scrollToSection(id) {
             const el = document.getElementById(id);
             if(el) el.scrollIntoView({behavior: 'smooth'});
         }
-
-        // Router
         function router(view, param) {
             window.scrollTo(0,0);
             const container = document.getElementById('app-container');
@@ -1160,13 +1095,8 @@ INDEX_HTML = """<!DOCTYPE html>
                 container.innerHTML = renderAdvisor();
             }
         }
-
-        // ==========================================
-        // HOME VIEW (Matching Reference Exact Layout)
-        // ==========================================
         function renderHome() {
             return `
-                <!-- Hero Section -->
                 <section class="hero-bg text-white py-20 px-4 sm:px-6 lg:px-8">
                     <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
                         <div class="lg:col-span-7">
@@ -1186,230 +1116,15 @@ INDEX_HTML = """<!DOCTYPE html>
                                     <i class="fa-solid fa-tractor mr-2"></i> List Your Equipment
                                 </button>
                             </div>
-                            <div class="flex flex-wrap gap-6 text-sm text-slate-300">
-                                <div class="flex items-center"><i class="fa-solid fa-check text-agri-400 mr-2"></i> Transparent pricing</div>
-                                <div class="flex items-center"><i class="fa-solid fa-check text-agri-400 mr-2"></i> Real availability</div>
-                                <div class="flex items-center"><i class="fa-solid fa-check text-agri-400 mr-2"></i> Farmer & Owner accounts</div>
-                                <div class="flex items-center"><i class="fa-solid fa-check text-agri-400 mr-2"></i> Safe & secure bookings</div>
-                            </div>
-                        </div>
-                        <div class="lg:col-span-5 hidden lg:block">
-                            <div class="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/20 shadow-2xl">
-                                <img src="https://images.unsplash.com/photo-1599940824399-b87987ceb72a?auto=format&fit=crop&q=80&w=800" class="rounded-2xl shadow-md w-full h-64 object-cover mb-4">
-                                <div class="flex items-center justify-between text-white">
-                                    <div>
-                                        <p class="font-bold text-lg">John Deere W70 Harvester</p>
-                                        <p class="text-xs text-agri-200">Amritsar, Punjab • Verified Owner</p>
-                                    </div>
-                                    <span class="bg-agri-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg">₹2,500 / hr</span>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </section>
-
-                <!-- How It Works Section -->
-                <section id="how-it-works" class="py-16 bg-white border-b border-slate-200">
-                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div class="text-center mb-12">
-                            <span class="text-xs font-bold text-agri-700 tracking-widest uppercase bg-agri-50 px-3 py-1 rounded-md">HOW IT WORKS</span>
-                            <h2 class="text-3xl font-extrabold text-agri-900 mt-2">Get started in 5 simple steps</h2>
-                            <p class="text-slate-600 mt-1">Finding or renting equipment is quick and easy.</p>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
-                            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 text-center relative">
-                                <div class="w-10 h-10 bg-agri-900 text-white font-bold rounded-full flex items-center justify-center mx-auto mb-4 text-sm">01</div>
-                                <i class="fa-solid fa-user-plus text-2xl text-agri-700 mb-3"></i>
-                                <h3 class="font-bold text-slate-900 text-sm mb-1">Create account</h3>
-                                <p class="text-xs text-slate-600">Sign up as a Farmer or Owner.</p>
-                            </div>
-                            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 text-center relative">
-                                <div class="w-10 h-10 bg-agri-900 text-white font-bold rounded-full flex items-center justify-center mx-auto mb-4 text-sm">02</div>
-                                <i class="fa-solid fa-magnifying-glass text-2xl text-agri-700 mb-3"></i>
-                                <h3 class="font-bold text-slate-900 text-sm mb-1">Find equipment</h3>
-                                <p class="text-xs text-slate-600">Browse available machinery near you.</p>
-                            </div>
-                            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 text-center relative">
-                                <div class="w-10 h-10 bg-agri-900 text-white font-bold rounded-full flex items-center justify-center mx-auto mb-4 text-sm">03</div>
-                                <i class="fa-solid fa-calendar-days text-2xl text-agri-700 mb-3"></i>
-                                <h3 class="font-bold text-slate-900 text-sm mb-1">Choose date & time</h3>
-                                <p class="text-xs text-slate-600">Select your rental period and send a request.</p>
-                            </div>
-                            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 text-center relative">
-                                <div class="w-10 h-10 bg-agri-900 text-white font-bold rounded-full flex items-center justify-center mx-auto mb-4 text-sm">04</div>
-                                <i class="fa-solid fa-handshake text-2xl text-agri-700 mb-3"></i>
-                                <h3 class="font-bold text-slate-900 text-sm mb-1">Owner responds</h3>
-                                <p class="text-xs text-slate-600">Get confirmation and manage your booking.</p>
-                            </div>
-                            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 text-center relative">
-                                <div class="w-10 h-10 bg-agri-900 text-white font-bold rounded-full flex items-center justify-center mx-auto mb-4 text-sm">05</div>
-                                <i class="fa-solid fa-circle-check text-2xl text-agri-700 mb-3"></i>
-                                <h3 class="font-bold text-slate-900 text-sm mb-1">Complete rental</h3>
-                                <p class="text-xs text-slate-600">Pay securely and rate the experience.</p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Farmer & Owner Cards Section -->
-                <section class="py-16 bg-slate-50">
-                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <!-- For Farmers -->
-                        <div id="farmers" class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                            <div>
-                                <span class="text-xs font-bold text-agri-700 uppercase">FOR FARMERS</span>
-                                <h3 class="text-2xl font-bold text-agri-900 mt-1 mb-3">Need a machine for your next farming operation?</h3>
-                                <p class="text-sm text-slate-600 mb-6">Access a wide range of agricultural machinery without the high cost of ownership. Compare, book and manage everything in one place.</p>
-                                <ul class="space-y-3 text-sm text-slate-700 mb-8">
-                                    <li><i class="fa-solid fa-check text-agri-600 mr-2"></i> Find tractors and implements</li>
-                                    <li><i class="fa-solid fa-check text-agri-600 mr-2"></i> Compare rental prices</li>
-                                    <li><i class="fa-solid fa-check text-agri-600 mr-2"></i> Check availability and distance</li>
-                                    <li><i class="fa-solid fa-check text-agri-600 mr-2"></i> Communicate with owners</li>
-                                    <li><i class="fa-solid fa-check text-agri-600 mr-2"></i> Manage bookings and payments</li>
-                                </ul>
-                            </div>
-                            <button onclick="router('marketplace')" class="bg-agri-900 hover:bg-agri-800 text-white font-semibold py-3 px-6 rounded-xl transition flex items-center justify-center">
-                                Explore Equipment <i class="fa-solid fa-arrow-right ml-2"></i>
-                            </button>
-                        </div>
-
-                        <!-- For Equipment Owners -->
-                        <div id="owners" class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                            <div>
-                                <span class="text-xs font-bold text-agri-700 uppercase">FOR EQUIPMENT OWNERS</span>
-                                <h3 class="text-2xl font-bold text-agri-900 mt-1 mb-3">Have machinery that isn't being used often?</h3>
-                                <p class="text-sm text-slate-600 mb-6">List your equipment, set your price and availability, and start earning. Your machinery can work harder and generate income.</p>
-                                <ul class="space-y-3 text-sm text-slate-700 mb-8">
-                                    <li><i class="fa-solid fa-check text-agri-600 mr-2"></i> Create equipment listings</li>
-                                    <li><i class="fa-solid fa-check text-agri-600 mr-2"></i> Set your rental price</li>
-                                    <li><i class="fa-solid fa-check text-agri-600 mr-2"></i> Control availability</li>
-                                    <li><i class="fa-solid fa-check text-agri-600 mr-2"></i> Receive booking requests</li>
-                                    <li><i class="fa-solid fa-check text-agri-600 mr-2"></i> Track earnings and performance</li>
-                                </ul>
-                            </div>
-                            <button onclick="openModal('signupModal')" class="bg-agri-600 hover:bg-agri-700 text-white font-semibold py-3 px-6 rounded-xl transition flex items-center justify-center">
-                                List Your Equipment <i class="fa-solid fa-arrow-right ml-2"></i>
-                            </button>
-                        </div>
-
-                        <!-- Browse Categories Card -->
-                        <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                            <div>
-                                <span class="text-xs font-bold text-agri-700 uppercase">MARKETPLACE</span>
-                                <h3 class="text-2xl font-bold text-agri-900 mt-1 mb-3">Browse Our Marketplace</h3>
-                                <p class="text-sm text-slate-600 mb-6">Find the right equipment for your needs across 12+ categories.</p>
-                                <div class="grid grid-cols-2 gap-3 mb-6">
-                                    <div onclick="router('marketplace', 'Tractors')" class="p-3 bg-slate-50 hover:bg-agri-50 border border-slate-200 rounded-xl cursor-pointer text-center transition">
-                                        <i class="fa-solid fa-tractor text-agri-700 text-lg mb-1"></i>
-                                        <p class="text-xs font-bold text-slate-800">Tractors</p>
-                                    </div>
-                                    <div onclick="router('marketplace', 'Rotavators')" class="p-3 bg-slate-50 hover:bg-agri-50 border border-slate-200 rounded-xl cursor-pointer text-center transition">
-                                        <i class="fa-solid fa-seedling text-agri-700 text-lg mb-1"></i>
-                                        <p class="text-xs font-bold text-slate-800">Rotavators</p>
-                                    </div>
-                                    <div onclick="router('marketplace', 'Harvesters')" class="p-3 bg-slate-50 hover:bg-agri-50 border border-slate-200 rounded-xl cursor-pointer text-center transition">
-                                        <i class="fa-solid fa-wheat-awn text-agri-700 text-lg mb-1"></i>
-                                        <p class="text-xs font-bold text-slate-800">Harvesters</p>
-                                    </div>
-                                    <div onclick="router('marketplace', 'Pumps')" class="p-3 bg-slate-50 hover:bg-agri-50 border border-slate-200 rounded-xl cursor-pointer text-center transition">
-                                        <i class="fa-solid fa-water text-agri-700 text-lg mb-1"></i>
-                                        <p class="text-xs font-bold text-slate-800">Pumps</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <button onclick="router('marketplace')" class="bg-agri-50 hover:bg-agri-100 text-agri-900 font-semibold py-3 px-6 rounded-xl transition flex items-center justify-center border border-agri-200">
-                                Browse All Equipment <i class="fa-solid fa-arrow-right ml-2"></i>
-                            </button>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Advisor & Trust Banner -->
-                <section class="py-12 bg-white border-y border-slate-200">
-                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div class="bg-agri-50 p-8 rounded-3xl border border-agri-100 flex items-center justify-between">
-                            <div>
-                                <span class="text-xs font-bold text-agri-700 uppercase">SMART RECOMMENDATIONS</span>
-                                <h3 class="text-xl font-bold text-agri-900 mt-1 mb-2">Farm Equipment Advisor</h3>
-                                <p class="text-sm text-slate-600 mb-4">Get personalized machinery recommendations based on crop, soil and farm size.</p>
-                                <button onclick="router('advisor')" class="bg-agri-600 hover:bg-agri-700 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition">
-                                    Try Farm Advisor <i class="fa-solid fa-arrow-right ml-1"></i>
-                                </button>
-                            </div>
-                            <i class="fa-solid fa-robot text-5xl text-agri-600/40 hidden sm:block"></i>
-                        </div>
-                        <div class="bg-slate-50 p-8 rounded-3xl border border-slate-200 flex items-center justify-between">
-                            <div>
-                                <span class="text-xs font-bold text-agri-700 uppercase">TRUST & SAFETY</span>
-                                <h3 class="text-xl font-bold text-agri-900 mt-1 mb-2">Why Choose AgriShare?</h3>
-                                <p class="text-sm text-slate-600 mb-4">Verified equipment, secure payment records, and trusted owner profiles.</p>
-                                <div class="flex gap-4 text-xs font-semibold text-agri-800">
-                                    <span><i class="fa-solid fa-shield-check mr-1"></i> Verified</span>
-                                    <span><i class="fa-solid fa-lock mr-1"></i> Secure</span>
-                                    <span><i class="fa-solid fa-star mr-1"></i> Rated</span>
-                                </div>
-                            </div>
-                            <i class="fa-solid fa-shield-halved text-5xl text-slate-300 hidden sm:block"></i>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- FAQ Section -->
-                <section id="faq" class="py-16 bg-slate-50">
-                    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div class="text-center mb-12">
-                            <span class="text-xs font-bold text-agri-700 tracking-widest uppercase bg-white px-3 py-1 rounded-md border border-slate-200">FAQ</span>
-                            <h2 class="text-3xl font-extrabold text-agri-900 mt-2">Frequently Asked Questions</h2>
-                        </div>
-                        <div class="space-y-4">
-                            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-                                <button onclick="toggleFaq(this)" class="w-full flex justify-between items-center text-left font-bold text-agri-900 text-base">
-                                    <span>How can small farmers share expensive equipment instead of owning it?</span>
-                                    <i class="fa-solid fa-chevron-down text-slate-400 transition-transform"></i>
-                                </button>
-                                <div class="accordion-content max-h-0 text-sm text-slate-600 mt-2">
-                                    Small farmers can rent heavy machinery such as tractors and harvesters for specific hours or days as needed, avoiding lakhs of rupees in capital expenditure while boosting farm productivity.
-                                </div>
-                            </div>
-                            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-                                <button onclick="toggleFaq(this)" class="w-full flex justify-between items-center text-left font-bold text-agri-900 text-base">
-                                    <span>How does AgriShare India work?</span>
-                                    <i class="fa-solid fa-chevron-down text-slate-400 transition-transform"></i>
-                                </button>
-                                <div class="accordion-content max-h-0 text-sm text-slate-600 mt-2">
-                                    Farmers browse available equipment near their location, choose dates, and send booking requests. Equipment owners review and accept requests, ensuring transparent and reliable rentals.
-                                </div>
-                            </div>
-                            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-                                <button onclick="toggleFaq(this)" class="w-full flex justify-between items-center text-left font-bold text-agri-900 text-base">
-                                    <span>Can equipment owners earn from unused machinery?</span>
-                                    <i class="fa-solid fa-chevron-down text-slate-400 transition-transform"></i>
-                                </button>
-                                <div class="accordion-content max-h-0 text-sm text-slate-600 mt-2">
-                                    Yes! When tractors or harvesters are idle between farming seasons, owners list them on AgriShare to earn steady rental income with full control over availability dates.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+                <div class="py-12 bg-white text-center">
+                    <h2 class="text-2xl font-bold text-agri-900 mb-4">Explore AgriShare Marketplace</h2>
+                    <button onclick="router('marketplace')" class="bg-agri-600 text-white px-6 py-3 rounded-xl font-bold">Browse All Equipment</button>
+                </div>
             `;
         }
-
-        function toggleFaq(btn) {
-            const content = btn.nextElementSibling;
-            const icon = btn.querySelector('i');
-            if (content.style.maxHeight && content.style.maxHeight !== '0px') {
-                content.style.maxHeight = '0px';
-                icon.style.transform = 'rotate(0deg)';
-            } else {
-                content.style.maxHeight = content.scrollHeight + 'px';
-                icon.style.transform = 'rotate(180deg)';
-            }
-        }
-
-        // ==========================================
-        // MARKETPLACE VIEW
-        // ==========================================
         function renderMarketplace() {
             return `
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -1419,605 +1134,128 @@ INDEX_HTML = """<!DOCTYPE html>
                             <p class="text-sm text-slate-600 mt-1">Discover verified agricultural machinery available for rent near you.</p>
                         </div>
                         <div class="flex items-center space-x-3 w-full md:w-auto">
-                            <input type="text" id="searchInput" onkeyup="filterEquipment()" placeholder="Search tractors, harvesters..." class="px-4 py-2.5 rounded-xl border border-slate-300 text-sm w-full md:w-72 focus:ring-2 focus:ring-agri-600 focus:outline-none">
+                            <input type="text" id="searchInput" onkeyup="filterEquipment()" placeholder="Search equipment..." class="px-4 py-2.5 rounded-xl border border-slate-300 text-sm w-full md:w-72">
                             <select id="categoryFilter" onchange="filterEquipment()" class="px-4 py-2.5 rounded-xl border border-slate-300 text-sm bg-white">
                                 <option value="All">All Categories</option>
                                 <option value="Tractors">Tractors</option>
                                 <option value="Rotavators">Rotavators</option>
                                 <option value="Harvesters">Harvesters</option>
                                 <option value="Pumps">Pumps</option>
-                                <option value="Cultivators">Cultivators</option>
                             </select>
                         </div>
                     </div>
-                    <div id="equipmentGrid" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        <!-- Loaded dynamically -->
-                    </div>
+                    <div id="equipmentGrid" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
                 </div>
             `;
         }
-
         let allEquipmentCache = [];
-
         async function loadMarketplaceEquipment(preselectCategory) {
             try {
                 const res = await fetch('/api/equipment');
                 allEquipmentCache = await res.json();
                 if(preselectCategory) {
                     const sel = document.getElementById('categoryFilter');
-                    if(sel) { sel.value = preselectCategory; }
+                    if(sel) sel.value = preselectCategory;
                 }
                 filterEquipment();
             } catch(e) { console.error(e); }
         }
-
         function filterEquipment() {
             const search = document.getElementById('searchInput').value.toLowerCase();
             const cat = document.getElementById('categoryFilter').value;
             const grid = document.getElementById('equipmentGrid');
-
             const filtered = allEquipmentCache.filter(eq => {
                 const matchesCat = (cat === 'All' || eq.category.toLowerCase().includes(cat.toLowerCase()));
-                const matchesSearch = eq.name.toLowerCase().includes(search) || eq.brand.toLowerCase().includes(search) || eq.location_text.toLowerCase().includes(search);
+                const matchesSearch = eq.name.toLowerCase().includes(search) || eq.brand.toLowerCase().includes(search);
                 return matchesCat && matchesSearch;
             });
-
             if(filtered.length === 0) {
                 grid.innerHTML = `<div class="col-span-full py-12 text-center text-slate-500 bg-white rounded-3xl border border-slate-200">No equipment found matching criteria.</div>`;
                 return;
             }
-
             grid.innerHTML = filtered.map(eq => `
-                <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition flex flex-col justify-between">
+                <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col justify-between">
                     <div>
                         <div class="relative h-48 bg-slate-100">
                             <img src="${eq.image}" class="w-full h-full object-cover">
                             <span class="absolute top-3 left-3 bg-agri-900 text-white text-[10px] font-bold px-2.5 py-1 rounded-md uppercase">${eq.category}</span>
-                            <span class="absolute top-3 right-3 bg-white/90 backdrop-blur-sm text-agri-900 text-xs font-bold px-2 py-1 rounded-md shadow-sm"><i class="fa-solid fa-star text-amber-500 mr-1"></i>4.8</span>
                         </div>
                         <div class="p-5">
                             <h3 class="font-bold text-slate-900 text-base mb-1">${eq.name}</h3>
                             <p class="text-xs text-slate-500 mb-3"><i class="fa-solid fa-location-dot mr-1 text-agri-600"></i>${eq.location_text}</p>
-                            <div class="flex items-center justify-between mb-4">
-                                <div>
-                                    <span class="text-lg font-extrabold text-agri-900">₹${eq.hourly_rate}</span>
-                                    <span class="text-xs text-slate-500"> / hour</span>
-                                </div>
-                                <span class="text-xs bg-emerald-50 text-agri-700 font-semibold px-2.5 py-1 rounded-lg">Verified Owner</span>
-                            </div>
+                            <span class="text-lg font-extrabold text-agri-900">₹${eq.hourly_rate}</span><span class="text-xs text-slate-500"> / hour</span>
                         </div>
                     </div>
                     <div class="p-5 pt-0 grid grid-cols-2 gap-2">
-                        <button onclick="router('equipment-detail', ${eq.id})" class="bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold py-2.5 rounded-xl text-xs transition text-center">View Details</button>
-                        <button onclick="router('equipment-detail', ${eq.id})" class="bg-agri-600 hover:bg-agri-700 text-white font-semibold py-2.5 rounded-xl text-xs transition text-center">Book Now</button>
+                        <button onclick="router('equipment-detail', ${eq.id})" class="bg-slate-100 text-slate-800 font-semibold py-2.5 rounded-xl text-xs">View Details</button>
+                        <button onclick="router('equipment-detail', ${eq.id})" class="bg-agri-600 text-white font-semibold py-2.5 rounded-xl text-xs">Book Now</button>
                     </div>
                 </div>
             `).join('');
         }
-
-        // ==========================================
-        // EQUIPMENT DETAILS VIEW
-        // ==========================================
-        function renderEquipmentDetail(id) {
-            return `
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" id="equipmentDetailContainer">
-                    <div class="animate-pulse bg-white p-8 rounded-3xl h-96">Loading equipment details...</div>
+        function renderEquipmentDetail(id) { return `<div class="max-w-7xl mx-auto px-4 py-8" id="equipmentDetailContainer"><div class="animate-pulse bg-white p-8 rounded-3xl h-96">Loading details...</div></div>`; }
+        async function loadEquipmentDetailData(id) {
+            const res = await fetch(`/api/equipment/${id}`);
+            const eq = await res.json();
+            document.getElementById('equipmentDetailContainer').innerHTML = `
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2 bg-white p-6 rounded-3xl border border-slate-200">
+                        <img src="${eq.images[0]}" class="w-full h-80 object-cover rounded-2xl mb-4">
+                        <h1 class="text-3xl font-extrabold text-agri-900 mb-2">${eq.name}</h1>
+                        <p class="text-sm text-slate-700">${eq.description}</p>
+                    </div>
+                    <div>
+                        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-lg sticky top-28">
+                            <span class="text-2xl font-extrabold text-agri-900">₹${eq.hourly_rate}</span><span class="text-xs text-slate-500"> / hour</span>
+                            <form onsubmit="handleBookingSubmit(event, ${eq.id})" class="space-y-4 mt-4">
+                                <div><label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Start Date & Time</label><input type="datetime-local" id="bookStart" required class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm"></div>
+                                <div><label class="block text-xs font-semibold text-slate-700 uppercase mb-1">End Date & Time</label><input type="datetime-local" id="bookEnd" required class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm"></div>
+                                <button type="submit" class="w-full bg-agri-600 text-white font-bold py-3.5 rounded-xl">Request Booking</button>
+                            </form>
+                        </div>
+                    </div>
                 </div>
             `;
         }
-
-        async function loadEquipmentDetailData(id) {
-            try {
-                const res = await fetch(`/api/equipment/${id}`);
-                const eq = await res.json();
-                const container = document.getElementById('equipmentDetailContainer');
-                container.innerHTML = `
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <div class="lg:col-span-2 space-y-6">
-                            <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-                                <img src="${eq.images[0]}" class="w-full h-80 object-cover rounded-2xl mb-4 shadow-sm">
-                                <div class="flex items-center justify-between mb-2">
-                                    <span class="bg-agri-100 text-agri-800 text-xs font-bold px-3 py-1 rounded-lg uppercase">${eq.category}</span>
-                                    <span class="text-xs text-slate-500"><i class="fa-solid fa-star text-amber-500 mr-1"></i>${eq.rating} (${eq.reviews_count} reviews)</span>
-                                </div>
-                                <h1 class="text-3xl font-extrabold text-agri-900 mb-2">${eq.name}</h1>
-                                <p class="text-sm text-slate-600 mb-4"><i class="fa-solid fa-location-dot mr-1 text-agri-600"></i>${eq.location_text}</p>
-                                <p class="text-sm text-slate-700 leading-relaxed">${eq.description}</p>
-                            </div>
-
-                            <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-                                <h3 class="font-bold text-agri-900 text-lg mb-4">Specifications & Features</h3>
-                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-                                    <div class="bg-slate-50 p-3 rounded-xl"><span class="text-slate-500 block text-xs">Brand</span><span class="font-bold text-slate-900">${eq.brand}</span></div>
-                                    <div class="bg-slate-50 p-3 rounded-xl"><span class="text-slate-500 block text-xs">Model</span><span class="font-bold text-slate-900">${eq.model}</span></div>
-                                    <div class="bg-slate-50 p-3 rounded-xl"><span class="text-slate-500 block text-xs">Horsepower</span><span class="font-bold text-slate-900">${eq.horsepower} HP</span></div>
-                                    <div class="bg-slate-50 p-3 rounded-xl"><span class="text-slate-500 block text-xs">Condition</span><span class="font-bold text-slate-900">${eq.condition}</span></div>
-                                    <div class="bg-slate-50 p-3 rounded-xl"><span class="text-slate-500 block text-xs">Fuel Type</span><span class="font-bold text-slate-900">${eq.fuel_type}</span></div>
-                                    <div class="bg-slate-50 p-3 rounded-xl"><span class="text-slate-500 block text-xs">Operator</span><span class="font-bold text-slate-900">${eq.operator_available ? 'Included / Available' : 'No'}</span></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Booking Widget -->
-                        <div>
-                            <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-lg sticky top-28">
-                                <div class="flex items-baseline justify-between mb-6 pb-4 border-b border-slate-200">
-                                    <div>
-                                        <span class="text-2xl font-extrabold text-agri-900">₹${eq.hourly_rate}</span>
-                                        <span class="text-xs text-slate-500"> / hour</span>
-                                    </div>
-                                    <span class="text-xs font-semibold text-agri-700 bg-emerald-50 px-3 py-1 rounded-lg">Available</span>
-                                </div>
-                                <form onsubmit="handleBookingSubmit(event, ${eq.id})" class="space-y-4">
-                                    <div>
-                                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Start Date & Time</label>
-                                        <input type="datetime-local" id="bookStart" required class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">End Date & Time</label>
-                                        <input type="datetime-local" id="bookEnd" required class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm">
-                                    </div>
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Land Area (Acres)</label>
-                                            <input type="number" id="bookLand" value="2.0" step="0.5" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm">
-                                        </div>
-                                        <div>
-                                            <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Crop</label>
-                                            <input type="text" id="bookCrop" value="Paddy" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm">
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Operation</label>
-                                        <input type="text" id="bookOperation" value="Land Preparation" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm">
-                                    </div>
-                                    <button type="submit" class="w-full bg-agri-600 hover:bg-agri-700 text-white font-bold py-3.5 rounded-xl transition shadow-sm">Request Booking</button>
-                                </form>
-                                <div class="mt-6 pt-6 border-t border-slate-200">
-                                    <div class="flex items-center space-x-3">
-                                        <div class="w-10 h-10 bg-agri-100 rounded-full flex items-center justify-center text-agri-800 font-bold">
-                                            ${eq.owner.name.charAt(0)}
-                                        </div>
-                                        <div>
-                                            <p class="font-bold text-slate-900 text-sm">${eq.owner.name}</p>
-                                            <p class="text-xs text-slate-500">${eq.owner.phone} • ${eq.owner.rentals_completed} rentals</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            } catch(e) { console.error(e); }
-        }
-
         async function handleBookingSubmit(e, equipmentId) {
             e.preventDefault();
-            if(!currentUser) {
-                alert('Please login as a farmer to request a booking.');
-                openModal('loginModal');
-                return;
-            }
+            if(!currentUser) { alert('Please login first.'); openModal('loginModal'); return; }
             const payload = {
                 equipment_id: equipmentId,
                 start_datetime: document.getElementById('bookStart').value.replace('T', ' '),
                 end_datetime: document.getElementById('bookEnd').value.replace('T', ' '),
-                land_area: parseFloat(document.getElementById('bookLand').value),
-                crop: document.getElementById('bookCrop').value,
-                operation: document.getElementById('bookOperation').value,
-                operator_required: true,
-                delivery_required: true
+                land_area: 2.0, crop: 'Paddy', operation: 'Ploughing'
             };
-
-            const res = await fetch('/api/bookings', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
-            });
+            const res = await fetch('/api/bookings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
             const data = await res.json();
-            if(res.ok) {
-                alert('Booking requested successfully! Total Amount: ₹' + data.amount);
-                router('farmer-dashboard');
-            } else {
-                alert(data.error || 'Booking request failed due to availability conflict.');
-            }
+            if(res.ok) { alert('Booking requested successfully!'); router('farmer-dashboard'); } else { alert(data.error); }
         }
-
-        // ==========================================
-        // FARM EQUIPMENT ADVISOR VIEW
-        // ==========================================
-        function renderAdvisor() {
-            return `
-                <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                    <div class="text-center mb-8">
-                        <span class="text-xs font-bold text-agri-700 tracking-widest uppercase bg-agri-100 px-3 py-1 rounded-md">SMART RECOMMENDATIONS</span>
-                        <h1 class="text-3xl font-extrabold text-agri-900 mt-2">Farm Equipment Advisor</h1>
-                        <p class="text-sm text-slate-600 mt-1">Get precise equipment recommendations based on your crop, soil and farming operation.</p>
-                    </div>
-
-                    <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm mb-8">
-                        <form onsubmit="handleAdvisorSubmit(event)" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Crop</label>
-                                <select id="advCrop" class="w-full px-3 py-3 rounded-xl border border-slate-300 text-sm bg-white">
-                                    <option value="Paddy">Paddy / Rice</option>
-                                    <option value="Wheat">Wheat</option>
-                                    <option value="Sugarcane">Sugarcane</option>
-                                    <option value="Cotton">Cotton</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Farming Operation</label>
-                                <select id="advOperation" class="w-full px-3 py-3 rounded-xl border border-slate-300 text-sm bg-white">
-                                    <option value="Land Preparation">Land Preparation / Ploughing</option>
-                                    <option value="Harvesting">Harvesting & Threshing</option>
-                                    <option value="Irrigation">Irrigation / Watering</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Farm Size (Acres)</label>
-                                <input type="number" id="advSize" value="5" class="w-full px-3 py-3 rounded-xl border border-slate-300 text-sm">
-                            </div>
-                            <div class="sm:col-span-3">
-                                <button type="submit" class="w-full bg-agri-600 hover:bg-agri-700 text-white font-bold py-3.5 rounded-xl transition shadow-sm">Get Recommendations</button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <div id="advisorResults" class="space-y-6">
-                        <!-- Loaded dynamically -->
-                    </div>
-                </div>
-            `;
-        }
-
-        async function handleAdvisorSubmit(e) {
-            e.preventDefault();
-            const crop = document.getElementById('advCrop').value;
-            const operation = document.getElementById('advOperation').value;
-            const farm_size = document.getElementById('advSize').value;
-
-            const res = await fetch('/api/advisor/recommend', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({crop, operation, farm_size})
-            });
-            const data = await res.json();
-            const resultsDiv = document.getElementById('advisorResults');
-
-            resultsDiv.innerHTML = `
-                <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-                    <h3 class="font-bold text-agri-900 text-lg mb-4">Recommended Machinery Categories for ${crop} (${operation})</h3>
-                    <div class="space-y-4 mb-6">
-                        ${data.recommendations.map(rec => `
-                            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                <div>
-                                    <h4 class="font-bold text-agri-900 text-base flex items-center"><i class="fa-solid fa-tractor mr-2 text-agri-700"></i>${rec.category}</h4>
-                                    <p class="text-xs text-slate-600 mt-1">${rec.reason}</p>
-                                    <span class="inline-block mt-2 text-[11px] bg-agri-100 text-agri-800 font-semibold px-2.5 py-1 rounded-md">Power: ${rec.hp}</span>
-                                </div>
-                                <div class="text-right">
-                                    <span class="text-sm font-extrabold text-agri-900 block">${rec.range}</span>
-                                    <button onclick="router('marketplace', '${rec.category}')" class="mt-2 bg-agni-600 bg-agri-600 hover:bg-agri-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition">View ${rec.category}</button>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-        }
-
-        // ==========================================
-        // FARMER DASHBOARD VIEW
-        // ==========================================
-        function renderFarmerDashboard() {
-            return `
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    <div class="flex items-center justify-between mb-8">
-                        <div>
-                            <span class="text-xs font-bold text-agri-700 uppercase">FARMER PORTAL</span>
-                            <h1 class="text-3xl font-extrabold text-agri-900 mt-1">Farmer Dashboard</h1>
-                        </div>
-                        <button onclick="router('marketplace')" class="bg-agri-600 hover:bg-agri-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition">Find Equipment</button>
-                    </div>
-
-                    <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm h-fit space-y-2">
-                            <button onclick="loadFarmerBookingsTab()" class="w-full text-left px-4 py-3 rounded-xl bg-agri-50 text-agri-900 font-bold text-sm flex items-center"><i class="fa-solid fa-calendar-check mr-3 text-agri-700"></i> My Bookings</button>
-                            <button onclick="router('advisor')" class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-700 font-semibold text-sm flex items-center"><i class="fa-solid fa-robot mr-3 text-agri-700"></i> Equipment Advisor</button>
-                        </div>
-                        <div class="lg:col-span-3 space-y-6" id="farmerContentArea">
-                            <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">Loading bookings...</div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
+        function renderFarmerDashboard() { return `<div class="max-w-7xl mx-auto px-4 py-8" id="farmerContentArea">Loading...</div>`; }
         async function loadFarmerDashboardData() {
-            loadFarmerBookingsTab();
-        }
-
-        async function loadFarmerBookingsTab() {
             const res = await fetch('/api/bookings');
             const bookings = await res.json();
-            const area = document.getElementById('farmerContentArea');
-            if(bookings.length === 0) {
-                area.innerHTML = `<div class="bg-white p-12 rounded-3xl border border-slate-200 text-center text-slate-500">No bookings found. <br><button onclick="router('marketplace')" class="mt-4 bg-agri-600 text-white px-4 py-2 rounded-xl text-xs font-bold">Browse Equipment</button></div>`;
-                return;
-            }
-
-            area.innerHTML = `
-                <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-                    <h3 class="font-bold text-agri-900 text-lg mb-4">My Equipment Bookings</h3>
-                    <div class="space-y-4">
-                        ${bookings.map(b => `
-                            <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                <div class="flex items-center space-x-4">
-                                    <img src="${b.equipment_image}" class="w-20 h-20 object-cover rounded-xl shadow-sm">
-                                    <div>
-                                        <h4 class="font-bold text-slate-900 text-base">${b.equipment_name}</h4>
-                                        <p class="text-xs text-slate-500">Operation: ${b.operation} (${b.crop}) • ${b.land_area} acres</p>
-                                        <p class="text-xs text-slate-500 mt-1"><i class="fa-regular fa-clock mr-1"></i>${b.start_datetime} to ${b.end_datetime}</p>
-                                    </div>
-                                </div>
-                                <div class="text-right">
-                                    <span class="text-lg font-extrabold text-agri-900 block">₹${b.amount}</span>
-                                    <span class="inline-block my-1 text-xs font-bold px-2.5 py-1 rounded-lg ${b.status === 'CONFIRMED' ? 'bg-emerald-100 text-agri-800' : 'bg-amber-100 text-amber-800'}">${b.status}</span>
-                                    ${b.status === 'ACCEPTED' ? `<button onclick="simulatePayment(${b.id})" class="block mt-2 bg-agri-600 hover:bg-agri-700 text-white text-xs font-bold px-4 py-2 rounded-xl">Pay Now</button>` : ''}
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
+            document.getElementById('farmerContentArea').innerHTML = `
+                <div class="bg-white p-6 rounded-3xl border border-slate-200">
+                    <h3 class="font-bold text-agri-900 text-lg mb-4">My Bookings</h3>
+                    ${bookings.map(b => `<div class="bg-slate-50 p-4 rounded-xl mb-3 flex justify-between"><span>${b.equipment_name} (${b.status})</span><span class="font-bold">₹${b.amount}</span></div>`).join('')}
                 </div>
             `;
         }
-
-        async function simulatePayment(bookingId) {
-            const res = await fetch('/api/payments/simulate', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({booking_id: bookingId})
-            });
-            const data = await res.json();
-            if(res.ok) {
-                alert(data.message);
-                loadFarmerBookingsTab();
-            } else {
-                alert('Payment simulation failed');
-            }
-        }
-
-        // ==========================================
-        // OWNER DASHBOARD VIEW
-        // ==========================================
-        function renderOwnerDashboard() {
-            return `
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    <div class="flex items-center justify-between mb-8">
-                        <div>
-                            <span class="text-xs font-bold text-agri-700 uppercase">OWNER PORTAL</span>
-                            <h1 class="text-3xl font-extrabold text-agri-900 mt-1">Equipment Owner Dashboard</h1>
-                        </div>
-                        <button onclick="openAddEquipmentModal()" class="bg-agri-600 hover:bg-agri-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition"><i class="fa-solid fa-plus mr-2"></i> Add Equipment</button>
-                    </div>
-
-                    <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm h-fit space-y-2">
-                            <button onclick="loadOwnerBookingsTab()" class="w-full text-left px-4 py-3 rounded-xl bg-agri-50 text-agri-900 font-bold text-sm flex items-center"><i class="fa-solid fa-calendar-days mr-3 text-agri-700"></i> Booking Requests</button>
-                            <button onclick="loadOwnerListingsTab()" class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-50 text-slate-700 font-semibold text-sm flex items-center"><i class="fa-solid fa-tractor mr-3 text-agri-700"></i> My Equipment</button>
-                        </div>
-                        <div class="lg:col-span-3 space-y-6" id="ownerContentArea">
-                            <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">Loading owner bookings...</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Add Equipment Modal -->
-                <div id="addEqModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-                    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-                        <button onclick="closeModal('addEqModal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
-                        <h3 class="text-xl font-bold text-agri-900 mb-4">Add Agricultural Equipment</h3>
-                        <form onsubmit="handleEquipmentAdd(event)" class="space-y-3">
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Equipment Name</label>
-                                <input type="text" id="eqName" required class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm" placeholder="Mahindra Tractor 575">
-                            </div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Category</label>
-                                    <select id="eqCategory" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm bg-white">
-                                        <option value="Tractors">Tractors</option>
-                                        <option value="Rotavators">Rotavators</option>
-                                        <option value="Harvesters">Harvesters</option>
-                                        <option value="Pumps">Pumps</option>
-                                        <option value="Cultivators">Cultivators</option>
-                                        <option value="Sprayers">Sprayers</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Brand</label>
-                                    <input type="text" id="eqBrand" required class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm" placeholder="Mahindra">
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Hourly Rate (₹)</label>
-                                    <input type="number" id="eqHourly" required value="750" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Daily Rate (₹)</label>
-                                    <input type="number" id="eqDaily" required value="5000" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm">
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Location / District</label>
-                                <input type="text" id="eqLocation" required value="Bengaluru Rural, KA" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Description</label>
-                                <textarea id="eqDesc" required rows="3" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm" placeholder="Heavy duty machinery in excellent condition"></textarea>
-                            </div>
-                            <button type="submit" class="w-full bg-agri-600 hover:bg-agri-700 text-white font-semibold py-3 rounded-xl transition shadow-sm mt-2">Publish Listing</button>
-                        </form>
-                    </div>
-                </div>
-            `;
-        }
-
+        function renderOwnerDashboard() { return `<div class="max-w-7xl mx-auto px-4 py-8" id="ownerContentArea">Loading owner panel...</div>`; }
         async function loadOwnerDashboardData() {
-            loadOwnerBookingsTab();
-        }
-
-        async function loadOwnerBookingsTab() {
             const res = await fetch('/api/bookings');
             const bookings = await res.json();
-            const area = document.getElementById('ownerContentArea');
-            if(bookings.length === 0) {
-                area.innerHTML = `<div class="bg-white p-12 rounded-3xl border border-slate-200 text-center text-slate-500">No booking requests received yet.</div>`;
-                return;
-            }
-
-            area.innerHTML = `
-                <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-                    <h3 class="font-bold text-agri-900 text-lg mb-4">Incoming Booking Requests</h3>
-                    <div class="space-y-4">
-                        ${bookings.map(b => `
-                            <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                <div>
-                                    <h4 class="font-bold text-slate-900 text-base">${b.equipment_name}</h4>
-                                    <p class="text-xs text-slate-600 mt-1">Farmer: <span class="font-bold text-slate-900">${b.farmer_name}</span> • ${b.land_area} acres (${b.operation})</p>
-                                    <p class="text-xs text-slate-500 mt-1"><i class="fa-regular fa-clock mr-1"></i>${b.start_datetime} to ${b.end_datetime}</p>
-                                </div>
-                                <div class="text-right">
-                                    <span class="text-lg font-extrabold text-agri-900 block">₹${b.amount}</span>
-                                    <span class="inline-block my-1 text-xs font-bold px-2.5 py-1 rounded-lg ${b.status === 'CONFIRMED' ? 'bg-emerald-100 text-agri-800' : 'bg-amber-100 text-amber-800'}">${b.status}</span>
-                                    ${b.status === 'PENDING_OWNER' ? `
-                                        <div class="flex gap-2 mt-2">
-                                            <button onclick="acceptBooking(${b.id})" class="bg-agri-600 hover:bg-agri-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">Accept</button>
-                                            <button onclick="rejectBooking(${b.id})" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">Reject</button>
-                                        </div>
-                                    ` : ''}
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
+            document.getElementById('ownerContentArea').innerHTML = `
+                <div class="bg-white p-6 rounded-3xl border border-slate-200">
+                    <h3 class="font-bold text-agri-900 text-lg mb-4">Owner Requests</h3>
+                    ${bookings.map(b => `<div class="bg-slate-50 p-4 rounded-xl mb-3 flex justify-between"><span>${b.equipment_name} -${b.status}</span></div>`).join('')}
                 </div>
             `;
         }
-
-        async function loadOwnerListingsTab() {
-            const res = await fetch('/api/equipment');
-            const eqs = await res.json();
-            const area = document.getElementById('ownerContentArea');
-            area.innerHTML = `
-                <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-                    <h3 class="font-bold text-agri-900 text-lg mb-4">My Equipment Listings</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        ${eqs.map(eq => `
-                            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex items-center space-x-4">
-                                <img src="${eq.image}" class="w-16 h-16 object-cover rounded-xl">
-                                <div>
-                                    <h4 class="font-bold text-slate-900 text-sm">${eq.name}</h4>
-                                    <p class="text-xs text-slate-500">₹${eq.hourly_rate} / hr • ${eq.location_text}</p>
-                                    <span class="inline-block mt-1 text-[10px] bg-emerald-100 text-agri-800 font-semibold px-2 py-0.5 rounded">Verified</span>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-        }
-
-        function openAddEquipmentModal() { openModal('addEqModal'); }
-
-        async function handleEquipmentAdd(e) {
-            e.preventDefault();
-            const payload = {
-                name: document.getElementById('eqName').value,
-                category: document.getElementById('eqCategory').value,
-                brand: document.getElementById('eqBrand').value,
-                model: 'Standard',
-                hourly_rate: parseFloat(document.getElementById('eqHourly').value),
-                daily_rate: parseFloat(document.getElementById('eqDaily').value),
-                location_text: document.getElementById('eqLocation').value,
-                description: document.getElementById('eqDesc').value
-            };
-            const res = await fetch('/api/equipment', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
-            });
-            if(res.ok) {
-                closeModal('addEqModal');
-                alert('Equipment listed successfully!');
-                loadOwnerListingsTab();
-            } else {
-                alert('Failed to list equipment');
-            }
-        }
-
-        async function acceptBooking(id) {
-            await fetch(`/api/bookings/${id}/accept`, {method: 'PUT'});
-            loadOwnerBookingsTab();
-        }
-
-        async function rejectBooking(id) {
-            await fetch(`/api/bookings/${id}/reject`, {method: 'PUT'});
-            loadOwnerBookingsTab();
-        }
-
-        // ==========================================
-        // ADMIN DASHBOARD VIEW
-        // ==========================================
-        function renderAdminDashboard() {
-            return `
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    <div class="mb-8">
-                        <span class="text-xs font-bold text-agri-700 uppercase">ADMIN PANEL</span>
-                        <h1 class="text-3xl font-extrabold text-agri-900 mt-1">Marketplace Administration</h1>
-                    </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" id="adminStatsGrid">
-                        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm"><p class="text-xs text-slate-500 font-semibold">Total Users</p><h3 class="text-3xl font-extrabold text-agri-900 mt-1" id="statUsers">-</h3></div>
-                        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm"><p class="text-xs text-slate-500 font-semibold">Equipment Listings</p><h3 class="text-3xl font-extrabold text-agri-900 mt-1" id="statEquipment">-</h3></div>
-                        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm"><p class="text-xs text-slate-500 font-semibold">Active Bookings</p><h3 class="text-3xl font-extrabold text-agri-900 mt-1" id="statBookings">-</h3></div>
-                        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm"><p class="text-xs text-slate-500 font-semibold">Total Revenue</p><h3 class="text-3xl font-extrabold text-agri-900 mt-1" id="statRevenue">-</h3></div>
-                    </div>
-                    <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-                        <h3 class="font-bold text-agri-900 text-lg mb-4">Platform Users & Verification Status</h3>
-                        <div id="adminUsersList" class="space-y-3">Loading users...</div>
-                    </div>
-                </div>
-            `;
-        }
-
-        async function loadAdminDashboardData() {
-            try {
-                const res = await fetch('/api/admin/dashboard');
-                const stats = await res.json();
-                document.getElementById('statUsers').innerText = stats.total_users;
-                document.getElementById('statEquipment').innerText = stats.total_equipment;
-                document.getElementById('statBookings').innerText = stats.active_bookings;
-                document.getElementById('statRevenue').innerText = '₹' + stats.total_revenue;
-
-                const uRes = await fetch('/api/admin/users');
-                const users = await uRes.json();
-                document.getElementById('adminUsersList').innerHTML = users.map(u => `
-                    <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex items-center justify-between">
-                        <div>
-                            <h4 class="font-bold text-slate-900 text-sm">${u.name} <span class="text-xs uppercase bg-agri-100 text-agri-800 px-2 py-0.5 rounded ml-2">${u.role}</span></h4>
-                            <p class="text-xs text-slate-500">${u.email} • ${u.phone} • ${u.state}</p>
-                        </div>
-                        <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg">Verified</span>
-                    </div>
-                `).join('');
-            } catch(e) { console.error(e); }
-        }
-
-        window.onload = function() {
-            checkAuth();
-            router('home');
-        }
+        function renderAdminDashboard() { return `<div class="max-w-7xl mx-auto px-4 py-8" id="adminContentArea">Admin Panel</div>`; }
+        async function loadAdminDashboardData() {}
+        function renderAdvisor() { return `<div class="max-w-4xl mx-auto px-4 py-12 text-center"><h1 class="text-3xl font-bold">Equipment Advisor</h1></div>`; }
+        window.onload = function() { checkAuth(); router('home'); }
     </script>
 </body>
 </html>
