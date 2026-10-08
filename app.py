@@ -1,12 +1,13 @@
 import os
 import datetime
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'agrishare-india-secret-key-2026'
 
+# Ensure database and templates directories exist securely
 db_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'database', 'agrishare.db')
 os.makedirs(os.path.dirname(db_path), exist_ok=True)
 os.makedirs(os.path.join(os.path.dirname(__file__), 'templates'), exist_ok=True)
@@ -17,7 +18,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 # ==========================================
-# DATABASE MODELS
+# 1. DATABASE MODELS (ORM)
 # ==========================================
 
 class User(db.Model):
@@ -27,21 +28,44 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     phone = db.Column(db.String(20), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(20), nullable=False)
+    role = db.Column(db.String(20), nullable=False) # 'farmer', 'owner', 'admin'
     state = db.Column(db.String(50), nullable=False)
     district = db.Column(db.String(50), nullable=False)
     village = db.Column(db.String(50), nullable=False)
     city = db.Column(db.String(50), nullable=False)
     pincode = db.Column(db.String(10), nullable=False)
+    latitude = db.Column(db.Float, default=12.9716)
+    longitude = db.Column(db.Float, default=77.5946)
+    profile_image = db.Column(db.String(255), default='https://placehold.co/150x150/1b4d3e/ffffff?text=User')
     is_verified = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+class FarmerProfile(db.Model):
+    __tablename__ = 'farmer_profiles'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    farm_size = db.Column(db.Float, default=5.0) # acres
+    soil_type = db.Column(db.String(50), default='Loamy')
+    primary_crops = db.Column(db.String(100), default='Paddy, Wheat')
+    preferred_language = db.Column(db.String(30), default='English')
+    user = db.relationship('User', backref=db.backref('farmer_profile', uselist=False))
+
+class OwnerProfile(db.Model):
+    __tablename__ = 'owner_profiles'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    business_name = db.Column(db.String(100), default='Agro Machinery Rentals')
+    experience = db.Column(db.Integer, default=3) # years
+    verification_status = db.Column(db.String(20), default='Verified') # Pending, Verified, Rejected
+    user = db.relationship('User', backref=db.backref('owner_profile', uselist=False))
 
 class Equipment(db.Model):
     __tablename__ = 'equipment'
     id = db.Column(db.Integer, primary_key=True)
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     name = db.Column(db.String(100), nullable=False)
-    category = db.Column(db.String(50), nullable=False)
+    category = db.Column(db.String(50), nullable=False) # Tractors, Rotavators, Cultivators, Harvesters, Pumps, Implements, Sprayers, etc.
     brand = db.Column(db.String(50), nullable=False)
     model = db.Column(db.String(50), nullable=False)
     year = db.Column(db.Integer, default=2022)
@@ -49,6 +73,7 @@ class Equipment(db.Model):
     condition = db.Column(db.String(30), default='Excellent')
     fuel_type = db.Column(db.String(30), default='Diesel')
     description = db.Column(db.Text, nullable=False)
+    specifications = db.Column(db.Text, default='Standard industrial PTO, heavy duty suspension')
     hourly_rate = db.Column(db.Float, default=750.0)
     daily_rate = db.Column(db.Float, default=5000.0)
     acre_rate = db.Column(db.Float, default=1200.0)
@@ -56,9 +81,12 @@ class Equipment(db.Model):
     operator_available = db.Column(db.Boolean, default=True)
     delivery_available = db.Column(db.Boolean, default=True)
     delivery_charge = db.Column(db.Float, default=300.0)
+    latitude = db.Column(db.Float, default=12.9716)
+    longitude = db.Column(db.Float, default=77.5946)
     location_text = db.Column(db.String(100), default='Bengaluru Rural, KA')
     verification_status = db.Column(db.String(20), default='Verified')
-    status = db.Column(db.String(20), default='Available')
+    status = db.Column(db.String(20), default='Available') # Available, Maintenance, Inactive
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     owner = db.relationship('User', backref='equipment_listings')
 
 class EquipmentImage(db.Model):
@@ -68,6 +96,15 @@ class EquipmentImage(db.Model):
     image_path = db.Column(db.String(255), nullable=False)
     equipment = db.relationship('Equipment', backref='images')
 
+class Availability(db.Model):
+    __tablename__ = 'availabilities'
+    id = db.Column(db.Integer, primary_key=True)
+    equipment_id = db.Column(db.Integer, db.ForeignKey('equipment.id'), nullable=False)
+    date = db.Column(db.String(20), nullable=False) # YYYY-MM-DD
+    start_time = db.Column(db.String(10), default='08:00')
+    end_time = db.Column(db.String(10), default='18:00')
+    status = db.Column(db.String(20), default='Available')
+
 class Booking(db.Model):
     __tablename__ = 'bookings'
     id = db.Column(db.Integer, primary_key=True)
@@ -76,18 +113,81 @@ class Booking(db.Model):
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     start_datetime = db.Column(db.String(30), nullable=False)
     end_datetime = db.Column(db.String(30), nullable=False)
-    land_area = db.Column(db.Float, default=2.0)
+    land_area = db.Column(db.Float, default=2.0) # acres
     crop = db.Column(db.String(50), default='Paddy')
     operation = db.Column(db.String(50), default='Ploughing')
+    operator_required = db.Column(db.Boolean, default=True)
+    delivery_required = db.Column(db.Boolean, default=True)
+    notes = db.Column(db.Text, default='')
     amount = db.Column(db.Float, nullable=False)
-    status = db.Column(db.String(30), default='PENDING_OWNER')
+    status = db.Column(db.String(30), default='PENDING_OWNER') # PENDING_OWNER, ACCEPTED, REJECTED, CONFIRMED, ACTIVE, COMPLETED, CANCELLED
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     equipment = db.relationship('Equipment', backref='bookings')
     farmer = db.relationship('User', foreign_keys=[farmer_id], backref='farmer_bookings')
     owner = db.relationship('User', foreign_keys=[owner_id], backref='owner_bookings')
 
+class Payment(db.Model):
+    __tablename__ = 'payments'
+    id = db.Column(db.Integer, primary_key=True)
+    booking_id = db.Column(db.Integer, db.ForeignKey('bookings.id'), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    status = db.Column(db.String(30), default='Completed')
+    provider = db.Column(db.String(50), default='Razorpay Simulation')
+    transaction_id = db.Column(db.String(100), default='TXN9842938492')
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    booking = db.relationship('Booking', backref=db.backref('payment', uselist=False))
+
+class Review(db.Model):
+    __tablename__ = 'reviews'
+    id = db.Column(db.Integer, primary_key=True)
+    booking_id = db.Column(db.Integer, db.ForeignKey('bookings.id'), nullable=False)
+    reviewer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    reviewee_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    rating = db.Column(db.Integer, default=5)
+    comment = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+
+class Favorite(db.Model):
+    __tablename__ = 'favorites'
+    id = db.Column(db.Integer, primary_key=True)
+    farmer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    equipment_id = db.Column(db.Integer, db.ForeignKey('equipment.id'), nullable=False)
+    equipment = db.relationship('Equipment')
+
+class Message(db.Model):
+    __tablename__ = 'messages'
+    id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    receiver_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    booking_id = db.Column(db.Integer, db.ForeignKey('bookings.id'), nullable=True)
+    message = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    sender = db.relationship('User', foreign_keys=[sender_id])
+
+class Notification(db.Model):
+    __tablename__ = 'notifications'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    type = db.Column(db.String(50), default='Booking')
+    title = db.Column(db.String(100), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+
+class Dispute(db.Model):
+    __tablename__ = 'disputes'
+    id = db.Column(db.Integer, primary_key=True)
+    booking_id = db.Column(db.Integer, db.ForeignKey('bookings.id'), nullable=False)
+    raised_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    reason = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(30), default='OPEN')
+    admin_notes = db.Column(db.Text, default='')
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+
+
 # ==========================================
-# SEED SCRIPT
+# 2. DATABASE SEED SCRIPT
 # ==========================================
 
 def seed_database():
@@ -97,13 +197,32 @@ def seed_database():
     u_admin = User(name='Admin Officer', email='admin@demo.local', phone='9876543210', password_hash=generate_password_hash('admin123'), role='admin', state='Karnataka', district='Bengaluru', village='Hebbal', city='Bengaluru', pincode='560024', is_verified=True)
     u_farmer1 = User(name='Ramesh Gowda', email='farmer@demo.local', phone='9876543211', password_hash=generate_password_hash('farmer123'), role='farmer', state='Karnataka', district='Mandya', village='Srirangapatna', city='Mandya', pincode='571438', is_verified=True)
     u_owner1 = User(name='Suresh Reddy', email='owner@demo.local', phone='9876543212', password_hash=generate_password_hash('owner123'), role='owner', state='Karnataka', district='Bengaluru Rural', village='Devanahalli', city='Bengaluru', pincode='562110', is_verified=True)
-
+    
     db.session.add_all([u_admin, u_farmer1, u_owner1])
     db.session.commit()
 
-    eq1 = Equipment(owner_id=u_owner1.id, name='Mahindra 575 DI Tractor', category='Tractors', brand='Mahindra', model='575 DI', year=2023, horsepower=45, condition='Excellent', fuel_type='Diesel', description='Reliable 45HP tractor equipped with heavy-duty dual clutch.', hourly_rate=850.0, daily_rate=5500.0, acre_rate=1200.0, location_text='Devanahalli, Bengaluru Rural', verification_status='Verified', status='Available')
-    eq2 = Equipment(owner_id=u_owner1.id, name='Shaktiman Rotary Tiller (Rotavator)', category='Rotavators', brand='Shaktiman', model='Regular Smart 6ft', year=2023, horsepower=50, condition='Like New', fuel_type='PTO Driven', description='High performance rotavator for fine seedbed preparation.', hourly_rate=600.0, daily_rate=3800.0, acre_rate=900.0, location_text='Devanahalli, Bengaluru Rural', verification_status='Verified', status='Available')
-    eq3 = Equipment(owner_id=u_owner1.id, name='John Deere W70 Grain Harvester', category='Harvesters', brand='John Deere', model='W70 Multi-Crop', year=2024, horsepower=100, condition='Excellent', fuel_type='Diesel', description='Self-propelled multi-crop harvester.', hourly_rate=2500.0, daily_rate=18000.0, acre_rate=2200.0, location_text='Devanahalli, Bengaluru Rural', verification_status='Verified', status='Available')
+    db.session.add(FarmerProfile(user_id=u_farmer1.id, farm_size=6.5, soil_type='Clay Loam', primary_crops='Paddy, Sugarcane', preferred_language='Kannada'))
+    db.session.add(OwnerProfile(user_id=u_owner1.id, business_name='Reddy Agro Machineries', experience=7, verification_status='Verified'))
+    db.session.commit()
+
+    eq1 = Equipment(
+        owner_id=u_owner1.id, name='Mahindra 575 DI Tractor', category='Tractors', brand='Mahindra', model='575 DI', year=2023, horsepower=45,
+        condition='Excellent', fuel_type='Diesel', description='Reliable 45HP tractor equipped with heavy-duty dual clutch, ideal for ploughing, puddling and heavy hauling.',
+        hourly_rate=850.0, daily_rate=5500.0, acre_rate=1200.0, deposit=2500.0, operator_available=True, delivery_available=True, delivery_charge=400.0,
+        location_text='Devanahalli, Bengaluru Rural', verification_status='Verified', status='Available'
+    )
+    eq2 = Equipment(
+        owner_id=u_owner1.id, name='Shaktiman Rotary Tiller (Rotavator)', category='Rotavators', brand='Shaktiman', model='Regular Smart 6ft', year=2023, horsepower=50,
+        condition='Like New', fuel_type='PTO Driven', description='High performance rotavator for fine seedbed preparation in single pass.',
+        hourly_rate=600.0, daily_rate=3800.0, acre_rate=900.0, deposit=1500.0, operator_available=False, delivery_available=True, delivery_charge=250.0,
+        location_text='Devanahalli, Bengaluru Rural', verification_status='Verified', status='Available'
+    )
+    eq3 = Equipment(
+        owner_id=u_owner1.id, name='John Deere W70 Grain Harvester', category='Harvesters', brand='John Deere', model='W70 Multi-Crop', year=2024, horsepower=100,
+        condition='Excellent', fuel_type='Diesel', description='Self-propelled multi-crop harvester designed for high output harvesting of paddy, wheat and soyabean.',
+        hourly_rate=2500.0, daily_rate=18000.0, acre_rate=2200.0, deposit=5000.0, operator_available=True, delivery_available=True, delivery_charge=1200.0,
+        location_text='Devanahalli, Bengaluru Rural', verification_status='Verified', status='Available'
+    )
 
     db.session.add_all([eq1, eq2, eq3])
     db.session.commit()
@@ -115,8 +234,32 @@ def seed_database():
 
 
 # ==========================================
-# REST API ROUTES
+# 3. REST API ENDPOINTS
 # ==========================================
+
+@app.route('/api/auth/register', methods=['POST'])
+def api_register():
+    data = request.json
+    if User.query.filter_by(email=data.get('email')).first():
+        return jsonify({'error': 'Email already registered'}), 400
+
+    user = User(
+        name=data.get('name'), email=data.get('email'), phone=data.get('phone', '9876543210'),
+        password_hash=generate_password_hash(data.get('password')), role=data.get('role', 'farmer'),
+        state='Karnataka', district=data.get('district', 'Mandya'), village='Hebbal', city='Bengaluru', pincode='560024', is_verified=True
+    )
+    db.session.add(user)
+    db.session.commit()
+
+    if user.role == 'farmer':
+        db.session.add(FarmerProfile(user_id=user.id))
+    elif user.role == 'owner':
+        db.session.add(OwnerProfile(user_id=user.id, verification_status='Verified'))
+    db.session.commit()
+
+    session['user_id'] = user.id
+    session['role'] = user.role
+    return jsonify({'success': True, 'user': {'id': user.id, 'name': user.name, 'role': user.role}})
 
 @app.route('/api/auth/login', methods=['POST'])
 def api_login():
@@ -124,6 +267,7 @@ def api_login():
     user = User.query.filter_by(email=data.get('email')).first()
     if not user or not check_password_hash(user.password_hash, data.get('password')):
         return jsonify({'error': 'Invalid email or password'}), 401
+
     session['user_id'] = user.id
     session['role'] = user.role
     return jsonify({'success': True, 'user': {'id': user.id, 'name': user.name, 'role': user.role, 'email': user.email}})
@@ -151,25 +295,20 @@ def api_get_equipment():
         query = query.filter(Equipment.name.ilike(f'%{search}%') | Equipment.brand.ilike(f'%{search}%'))
     
     equipments = query.all()
-    result = []
-    for eq in equipments:
-        img = eq.images[0].image_path if eq.images else 'https://placehold.co/600x400/1b4d3e/ffffff?text=Equipment'
-        result.append({
-            'id': eq.id, 'name': eq.name, 'category': eq.category, 'brand': eq.brand,
-            'hourly_rate': eq.hourly_rate, 'location_text': eq.location_text, 'image': img
-        })
-    return jsonify(result)
+    return jsonify([{
+        'id': eq.id, 'name': eq.name, 'category': eq.category, 'brand': eq.brand,
+        'hourly_rate': eq.hourly_rate, 'location_text': eq.location_text,
+        'image': eq.images[0].image_path if eq.images else 'https://placehold.co/600x400'
+    } for eq in equipments])
 
 @app.route('/api/equipment/<int:id>', methods=['GET'])
 def api_get_equipment_detail(id):
     eq = Equipment.query.get_or_404(id)
-    images = [img.image_path for img in eq.images]
-    if not images:
-        images = ['https://placehold.co/800x600/1b4d3e/ffffff?text=Equipment']
+    images = [img.image_path for img in eq.images] or ['https://placehold.co/800x600']
     return jsonify({
         'id': eq.id, 'name': eq.name, 'category': eq.category, 'brand': eq.brand,
         'description': eq.description, 'hourly_rate': eq.hourly_rate, 'images': images,
-        'owner': {'name': eq.owner.name, 'phone': eq.owner.phone}
+        'owner': {'name': eq.owner.name, 'phone': eq.owner.phone if 'user_id' in session else '🔒 Unlock after booking'}
     })
 
 @app.route('/api/bookings', methods=['POST', 'GET'])
@@ -179,10 +318,22 @@ def api_bookings():
             return jsonify({'error': 'Please login first'}), 401
         data = request.json
         eq = Equipment.query.get_or_404(data.get('equipment_id'))
+        
+        start_str = data.get('start_datetime')
+        end_str = data.get('end_datetime')
+        overlapping = Booking.query.filter(
+            Booking.equipment_id == eq.id,
+            Booking.status.in_(['CONFIRMED', 'ACTIVE', 'ACCEPTED', 'PENDING_OWNER']),
+            Booking.start_datetime <= end_str,
+            Booking.end_datetime >= start_str
+        ).first()
+
+        if overlapping:
+            return jsonify({'error': 'Equipment is already booked for these dates.'}), 400
+
         booking = Booking(
             equipment_id=eq.id, farmer_id=session['user_id'], owner_id=eq.owner_id,
-            start_datetime=data.get('start_datetime'), end_datetime=data.get('end_datetime'),
-            amount=eq.hourly_rate * 8.0, status='PENDING_OWNER'
+            start_datetime=start_str, end_datetime=end_str, amount=eq.hourly_rate * 8.0, status='PENDING_OWNER'
         )
         db.session.add(booking)
         db.session.commit()
@@ -190,10 +341,11 @@ def api_bookings():
     else:
         if 'user_id' not in session:
             return jsonify([])
-        user_id = session['user_id']
-        bookings = Booking.query.filter((Booking.farmer_id == user_id) | (Booking.owner_id == user_id)).all()
+        user = User.query.get(session['user_id'])
+        bookings = Booking.query.filter_by(farmer_id=user.id).all() if user.role == 'farmer' else Booking.query.filter_by(owner_id=user.id).all()
         return jsonify([{
-            'id': b.id, 'equipment_name': b.equipment.name, 'amount': b.amount, 'status': b.status
+            'id': b.id, 'equipment_name': b.equipment.name, 'farmer_name': b.farmer.name,
+            'amount': b.amount, 'status': b.status, 'start_datetime': b.start_datetime
         } for b in bookings])
 
 @app.route('/api/advisor/recommend', methods=['POST'])
@@ -218,9 +370,20 @@ def api_advisor_recommend():
         ]
     return jsonify({'success': True, 'crop': crop, 'operation': operation, 'recommendations': recommendations})
 
+@app.route('/api/admin/dashboard', methods=['GET'])
+def api_admin_dashboard():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        return jsonify({'error': 'Forbidden'}), 403
+    return jsonify({
+        'total_users': User.query.count(),
+        'total_equipment': Equipment.query.count(),
+        'active_bookings': Booking.query.filter_by(status='CONFIRMED').count(),
+        'total_revenue': sum([p.amount for p in Payment.query.all()])
+    })
+
 
 # ==========================================
-# FRONTEND HTML VIEW ROUTE
+# 4. FRONTEND HTML VIEW ROUTE
 # ==========================================
 
 @app.route('/')
@@ -229,7 +392,7 @@ def index():
 
 
 # ==========================================
-# TEMPLATES INDEX.HTML
+# 5. FULL FRONTEND TEMPLATE (templates/index.html)
 # ==========================================
 
 INDEX_HTML = """<!DOCTYPE html>
@@ -269,9 +432,7 @@ INDEX_HTML = """<!DOCTYPE html>
     <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
             <div class="flex items-center space-x-3 cursor-pointer" onclick="router('home')">
-                <div class="bg-agri-900 text-white p-2.5 rounded-xl shadow-md">
-                    <i class="fa-solid fa-tractor text-xl"></i>
-                </div>
+                <div class="bg-agri-900 text-white p-2.5 rounded-xl shadow-md"><i class="fa-solid fa-tractor text-xl"></i></div>
                 <div>
                     <span class="text-xl font-bold text-agri-900 tracking-tight block leading-none">AgriShare India</span>
                     <span class="text-[10px] font-semibold text-agri-700 tracking-widest uppercase block mt-1">Farm Equipment Marketplace</span>
@@ -360,10 +521,18 @@ INDEX_HTML = """<!DOCTYPE html>
         <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
             <button onclick="closeModal('signupModal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             <h3 class="text-2xl font-bold text-agri-900 mb-1">Join AgriShare India</h3>
-            <form onsubmit="closeModal('signupModal')" class="space-y-3 mt-4">
+            <form onsubmit="handleSignup(event)" class="space-y-3 mt-4">
                 <div>
                     <label class="block text-[11px] font-semibold text-slate-700 uppercase mb-1">Full Name</label>
-                    <input type="text" required class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm" placeholder="Rajesh Kumar">
+                    <input type="text" id="signupName" required class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm" placeholder="Rajesh Kumar">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-700 uppercase mb-1">Email Address</label>
+                    <input type="email" id="signupEmail" required class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm" placeholder="rajesh@demo.local">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-700 uppercase mb-1">Password</label>
+                    <input type="password" id="signupPassword" required class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm" placeholder="••••••••">
                 </div>
                 <button type="submit" class="w-full bg-agri-600 hover:bg-agri-700 text-white font-semibold py-3 rounded-xl transition mt-2">Create Account</button>
             </form>
@@ -421,6 +590,25 @@ INDEX_HTML = """<!DOCTYPE html>
                 router('home');
             } else { alert(data.error || 'Login failed'); }
         }
+        async function handleSignup(e) {
+            e.preventDefault();
+            const payload = {
+                name: document.getElementById('signupName').value,
+                email: document.getElementById('signupEmail').value,
+                password: document.getElementById('signupPassword').value,
+                phone: '9876543210', role: 'farmer', district: 'Mandya'
+            };
+            const res = await fetch('/api/auth/register', {
+                method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if(res.ok) {
+                currentUser = data.user;
+                closeModal('signupModal');
+                updateAuthNav();
+                router('home');
+            } else { alert(data.error || 'Signup failed'); }
+        }
         async function logout() {
             await fetch('/api/auth/logout', {method: 'POST'});
             currentUser = null;
@@ -430,12 +618,6 @@ INDEX_HTML = """<!DOCTYPE html>
         function scrollToSection(id) {
             const el = document.getElementById(id);
             if(el) el.scrollIntoView({behavior: 'smooth'});
-        }
-        function toggleAccordion(idx) {
-            const content = document.getElementById(`faq-content-${idx}`);
-            const icon = document.getElementById(`faq-icon-${idx}`);
-            content.classList.toggle('open');
-            icon.classList.toggle('rotate-180');
         }
 
         // Router View Controller
@@ -479,7 +661,62 @@ INDEX_HTML = """<!DOCTYPE html>
                         </div>
                     </div>
                 </section>
-                <section id="how-it-works" class="py-20 bg-white">
+
+                <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                        <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                            <div>
+                                <span class="text-xs font-bold text-agri-700 uppercase tracking-wider bg-agri-50 px-3 py-1 rounded-md">SMART RECOMMENDATIONS</span>
+                                <h2 class="text-2xl font-extrabold text-agri-900 mt-3 mb-2">Farm Equipment Advisor</h2>
+                                <p class="text-sm text-slate-600 mb-6">Get personalized machinery recommendations based on crop, soil and farm size.</p>
+                            </div>
+                            <button onclick="router('advisor')" class="bg-agri-600 hover:bg-agri-700 text-white font-bold px-6 py-3.5 rounded-xl transition flex items-center justify-center w-full sm:w-auto">
+                                Try Farm Advisor <i class="fa-solid fa-arrow-right ml-2"></i>
+                            </button>
+                        </div>
+                        <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                            <div>
+                                <span class="text-xs font-bold text-agri-700 uppercase tracking-wider bg-agri-50 px-3 py-1 rounded-md">TRUST & SAFETY</span>
+                                <h2 class="text-2xl font-extrabold text-agri-900 mt-3 mb-2">Why Choose AgriShare?</h2>
+                                <p class="text-sm text-slate-600 mb-6">Verified equipment, secure payment records, and trusted owner profiles.</p>
+                            </div>
+                            <div class="flex items-center space-x-6 text-sm font-semibold text-agri-800">
+                                <span><i class="fa-solid fa-check mr-1"></i> Verified</span>
+                                <span><i class="fa-solid fa-lock mr-1"></i> Secure</span>
+                                <span><i class="fa-solid fa-star mr-1"></i> Rated</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                            <div>
+                                <span class="text-xs font-bold text-agri-700 uppercase tracking-wider bg-agri-50 px-3 py-1 rounded-md">FOR FARMERS</span>
+                                <h3 class="text-xl font-extrabold text-agri-900 mt-3 mb-2">Need a machine for your next farming operation?</h3>
+                                <p class="text-xs text-slate-600 mb-4">Access a wide range of agricultural machinery without the high cost of ownership.</p>
+                            </div>
+                            <button onclick="router('marketplace')" class="bg-agri-900 text-white font-bold px-6 py-3 rounded-xl text-xs transition">Explore Equipment <i class="fa-solid fa-arrow-right ml-1"></i></button>
+                        </div>
+                        <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                            <div>
+                                <span class="text-xs font-bold text-agri-700 uppercase tracking-wider bg-agri-50 px-3 py-1 rounded-md">FOR EQUIPMENT OWNERS</span>
+                                <h3 class="text-xl font-extrabold text-agri-900 mt-3 mb-2">Have machinery that isn't being used often?</h3>
+                                <p class="text-xs text-slate-600 mb-4">List your equipment, set your price and availability, and start earning.</p>
+                            </div>
+                            <button onclick="openModal('signupModal')" class="bg-agri-600 text-white font-bold px-6 py-3 rounded-xl text-xs transition">List Your Equipment <i class="fa-solid fa-arrow-right ml-1"></i></button>
+                        </div>
+                        <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                            <div>
+                                <span class="text-xs font-bold text-agri-700 uppercase tracking-wider bg-agri-50 px-3 py-1 rounded-md">MARKETPLACE</span>
+                                <h3 class="text-xl font-extrabold text-agri-900 mt-3 mb-2">Browse Our Marketplace</h3>
+                                <p class="text-xs text-slate-600 mb-4">Find the right equipment for your needs across 12+ categories.</p>
+                            </div>
+                            <button onclick="router('marketplace')" class="bg-agri-50 text-agri-900 font-bold px-6 py-3 rounded-xl text-xs border border-agri-200 hover:bg-agri-100 transition">Browse All Equipment <i class="fa-solid fa-arrow-right ml-1"></i></button>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="how-it-works" class="py-16 bg-white border-t border-slate-200">
                     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                         <h2 class="text-3xl font-extrabold text-agri-900 mb-4">How it works</h2>
                         <p class="text-slate-600 max-w-md mx-auto mb-12 text-sm">Discover, rent and manage farming machinery in minutes.</p>
@@ -592,7 +829,8 @@ INDEX_HTML = """<!DOCTYPE html>
                 end_datetime: document.getElementById('bookEnd').value.replace('T', ' ')
             };
             const res = await fetch('/api/bookings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
-            if(res.ok) { alert('Booking requested successfully!'); router('marketplace'); }
+            const data = await res.json();
+            if(res.ok) { alert('Booking requested successfully!'); router('marketplace'); } else { alert(data.error); }
         }
 
         function renderAdvisor() {
@@ -682,5 +920,5 @@ with open(os.path.join(os.path.dirname(__file__), 'templates', 'index.html'), 'w
 if __name__ == '__main__':
     with app.app_context():
         seed_database()
-        print("Database seeded successfully!")
+        print("Database seeded successfully! AgriShare India is running.")
     app.run(host='0.0.0.0', port=5000, debug=True)
