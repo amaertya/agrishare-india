@@ -1351,6 +1351,7 @@ INDEX_HTML = """<!DOCTYPE html>
                                 <option value="All">All Categories</option>
                                 <option value="Tractors">Tractors</option>
                                 <option value="Rotavators">Rotavators</option>
+                                <option value="Cultivators">Cultivators</option>
                                 <option value="Harvesters">Harvesters</option>
                                 <option value="Pumps">Pumps</option>
                             </select>
